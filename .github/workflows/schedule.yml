@@ -2,15 +2,14 @@ name: Gym Capacity Auto Tracker
 
 on:
   schedule:
-    # 每 30 分鐘執行一次
     - cron: '*/30 * * * *' 
-  workflow_dispatch: # 允許手動執行
+  workflow_dispatch:
 
 jobs:
   run-and-record:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 允許寫入檔案 (非常重要)
+      contents: write
 
     steps:
       - name: 取得最新程式碼
@@ -27,15 +26,15 @@ jobs:
       - name: 執行爬蟲腳本
         run: python main.py
 
-      - - name: 將更新後的 CSV 提交回 GitHub
-            run: |
-              git config --local user.email "github-actions[bot]@users.noreply.github.com"
-              git config --local user.name "github-actions[bot]"
-              
-              if [ -f gym_capacity_log.csv ]; then
-                git add gym_capacity_log.csv
-                git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update capacity log"
-                git push
-              else
-                echo "未產生 CSV 檔案，代表本次未成功抓取資料，略過 Commit 步驟。"
-              fi
+      - name: 將更新後的 CSV 提交回 GitHub
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          if [ -f gym_capacity_log.csv ]; then
+            git add gym_capacity_log.csv
+            git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update capacity log"
+            git push
+          else
+            echo "未產生 CSV 檔案，代表本次未成功抓取資料，略過 Commit 步驟。"
+          fi
