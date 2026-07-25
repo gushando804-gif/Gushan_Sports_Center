@@ -4,40 +4,42 @@ import csv
 import os
 from datetime import datetime
 
-URL = "https://teamweb.sporetrofit.com/Location/"
+# 嘗試在網址後方直接加上場館代號，強迫伺服器回傳鼓山的資料
+URL = "https://teamweb.sporetrofit.com/Location/?LID=TMEGS"
 CSV_FILENAME = "gym_capacity_log.csv"
 
 def fetch_and_record():
     try:
-        # 加上 headers 偽裝成瀏覽器，避免被網站阻擋
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-        response = requests.get(URL, headers=headers)
+        
+        # 使用 Session 來連線
+        session = requests.Session()
+        response = session.get(URL, headers=headers)
         response.raise_for_status()
         
-        # 使用 BeautifulSoup 解析網頁
         soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # === 【新增】偵錯訊息區塊 ===
+        print("【網頁載入測試】")
+        print(f"機器人實際抓到的網頁標題: {soup.title.text.strip() if soup.title else '找不到標題'}")
+        print("---------------------")
         
         current_people = None
         
-        # 根據截圖結構：尋找所有 class 為 'col-6' 的區塊
+        # 尋找人數
         gym_divs = soup.find_all('div', class_='col-6')
         for div in gym_divs:
-            # 如果這個區塊裡面包含「健身房」三個字
             if '健身房' in div.text:
-                # 抓取它緊鄰的下一個 class 為 'col-3' 的區塊 (裡面就是現在人數)
                 people_div = div.find_next_sibling('div', class_='col-3')
                 if people_div:
-                    # 取出數字，並清除前後多餘的空白或換行
                     current_people = people_div.text.strip()
-                break # 找到後就提早結束迴圈
+                break
         
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # 檢查是否有成功抓到數字
         if current_people:
-            # 寫入 CSV 檔案
             file_exists = os.path.isfile(CSV_FILENAME)
             with open(CSV_FILENAME, mode='a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
@@ -47,7 +49,9 @@ def fetch_and_record():
                 
             print(f"[{current_time}] 成功記錄：現在人數 {current_people} 人")
         else:
-            print(f"[{current_time}] 警告：找不到對應的人數元素，請檢查網頁結構。")
+            print(f"[{current_time}] 警告：找不到人數！")
+            # 如果找不到，印出網頁最前面的程式碼，讓我們看看機器人到底抓到了什麼鬼東西
+            print(f"網頁前 300 字元預覽：\n{response.text[:300]}")
             
     except Exception as e:
         print(f"發生錯誤: {e}")
