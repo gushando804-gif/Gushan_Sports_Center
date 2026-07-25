@@ -3,104 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>鼓山運動中心 - 人流統計圖</title>
+    <title>鼓山運動中心 - 健身房大數據分析</title>
     <!-- 引入 Chart.js 圖表套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        .chart-container { position: relative; height: 60vh; width: 100%; }
+        h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .chart-container { position: relative; height: 50vh; width: 100%; margin-bottom: 40px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>鼓山運動中心 健身房人數趨勢</h2>
+    <h2>📊 過去一個月：週一至週日 平均人數</h2>
     <div class="chart-container">
-        <canvas id="capacityChart"></canvas>
+        <canvas id="dayChart"></canvas>
+    </div>
+
+    <h2>⏰ 過去一個月：每日各時段 平均人數</h2>
+    <div class="chart-container">
+        <canvas id="hourChart"></canvas>
     </div>
 </div>
 
 <script>
-    // 建立一個變數來儲存圖表，以便更新時能先清空舊圖表
-    let myChart = null;
+    let dayChartInstance = null;
+    let hourChartInstance = null;
 
-    // 自動讀取 CSV 檔案 (加入時間戳記破解瀏覽器快取)
-    async function fetchData() {
-        // 在網址後方加上目前時間毫秒，強迫抓取最新檔案
-        const cacheBuster = new Date().getTime();
-        const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
-        const data = await response.text();
-        
-        const rows = data.trim().split('\n').slice(1);
-        const timeLabels = [];
-        const peopleData = [];
-        
-        rows.forEach(row => {
-            const cols = row.split(',');
-            if(cols.length === 2) {
-                const shortTime = cols[0].substring(5, 16); 
-                timeLabels.push(shortTime);
-                peopleData.push(parseInt(cols[1]));
-            }
+    // 定義動態顏色計算函數：最高分紅，最低分草綠，其他灰
+    function getBarColors(dataArray) {
+        // 過濾掉沒有資料(0)的項目再來算最小值，避免把沒開館的時間當作最少人
+        const validData = dataArray.filter(v => v > 0); 
+        const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
+        const minVal = validData.length > 0 ? Math.min(...validData) : 0;
+
+        return dataArray.map(val => {
+            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.8)';  // 紅色 (最多人)
+            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.8)';   // 草綠色 (最少人)
+            return 'rgba(200, 200, 200, 0.5)';                                // 灰色 (一般)
         });
-        
-        return { timeLabels, peopleData };
     }
 
-    // 繪製圖表
-    async function renderChart() {
-        const data = await fetchData();
-        const ctx = document.getElementById('capacityChart').getContext('2d');
+    async function fetchAndProcessData() {
+        // 加上時間戳記避免快取
+        const cacheBuster = new Date().getTime();
+        const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
+        const textData = await response.text();
         
-        // 【關鍵】如果畫面上已經有圖表了，必須先把它銷毀，否則新舊圖表會重疊閃爍
-        if (myChart !== null) {
-            myChart.destroy();
-        }
+        const rows = textData.trim().split('\n').slice(1);
         
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.timeLabels,
-                datasets: [{
-                    label: '現場人數',
-                    data: data.peopleData,
-                    borderColor: 'rgba(12, 180, 181, 1)',
-                    backgroundColor: 'rgba(12, 180, 181, 0.2)',
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { ticks: { maxRotation: 45, minRotation: 45 } },
-                    y: { 
-                        beginAtZero: true, 
-                        suggestedMax: 70,
-                        title: { display: true, text: '人數' }
-                    }
-                },
-                // 加入動畫取消，讓自動更新時畫面不會一直彈跳
-                animation: {
-                    duration: 0
+        // 抓出「一個月前」的時間點，用來過濾資料
+        const now = new Date();
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(now.getMonth() - 1);
+
+        // 準備用來統計的陣列
+        let daySums = Array(7).fill(0);   // 星期日=0, 星期一=1 ...
+        let dayCounts = Array(7).fill(0);
+        let hourSums = Array(24).fill(0); // 00點到23點
+        let hourCounts = Array(24).fill(0);
+
+        rows.forEach(row => {
+            const cols = row.split(',');
+            if (cols.length === 2) {
+                // 將字串 "YYYY-MM-DD HH:MM:SS" 轉換成 Date 物件 (針對台灣時區格式修正)
+                const recordTime = new Date(cols[0].replace(/-/g, '/'));
+                const people = parseInt(cols[1]);
+
+                // 只統計過去一個月的資料，並且人數要大於等於 0
+                if (recordTime >= oneMonthAgo && !isNaN(people)) {
+                    // 統計星期幾
+                    const day = recordTime.getDay();
+                    daySums[day] += people;
+                    dayCounts[day]++;
+
+                    // 統計小時
+                    const hour = recordTime.getHours();
+                    hourSums[hour] += people;
+                    hourCounts[hour]++;
                 }
             }
         });
-        
-        // 在網頁開發者工具印出更新時間，方便確認自動更新有在運作
-        console.log(`圖表已於 ${new Date().toLocaleTimeString()} 自動更新`);
+
+        // 計算星期一到星期日的平均值 (為了排版順序，我們將陣列排序為 [一, 二, 三, 四, 五, 六, 日])
+        const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+        const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+        const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
+
+        // 計算 00:00 到 23:00 的平均值
+        const hourLabels = [];
+        const hourAvgs = [];
+        for (let i = 0; i < 24; i++) {
+            hourLabels.push(i.toString().padStart(2, '0') + ':00');
+            hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
+        }
+
+        return { dayLabels, dayAvgs, hourLabels, hourAvgs };
     }
 
-    // 1. 網頁剛打開時，立刻執行第一次載入
-    renderChart();
+    async function renderCharts() {
+        const data = await fetchAndProcessData();
+        
+        // --- 繪製第一個圖表：週一至週日 ---
+        if (dayChartInstance) dayChartInstance.destroy();
+        const ctxDay = document.getElementById('dayChart').getContext('2d');
+        dayChartInstance = new Chart(ctxDay, {
+            type: 'bar',
+            data: {
+                labels: data.dayLabels,
+                datasets: [{
+                    label: '平均人數',
+                    data: data.dayAvgs,
+                    backgroundColor: getBarColors(data.dayAvgs),
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                plugins: { legend: { display: false } }, // 隱藏多餘的圖例
+                scales: { y: { beginAtZero: true, title: { display: true, text: '平均人數' } } }
+            }
+        });
 
-    // 2. 設定定時器：每 5 分鐘 (300000 毫秒) 自動重新載入一次資料
-    setInterval(renderChart,100000);
+        // --- 繪製第二個圖表：各時段 ---
+        if (hourChartInstance) hourChartInstance.destroy();
+        const ctxHour = document.getElementById('hourChart').getContext('2d');
+        hourChartInstance = new Chart(ctxHour, {
+            type: 'bar',
+            data: {
+                labels: data.hourLabels,
+                datasets: [{
+                    label: '平均人數',
+                    data: data.hourAvgs,
+                    backgroundColor: getBarColors(data.hourAvgs),
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                plugins: { legend: { display: false } },
+                scales: { 
+                    x: { ticks: { maxRotation: 45, minRotation: 45 } },
+                    y: { beginAtZero: true, title: { display: true, text: '平均人數' } } 
+                }
+            }
+        });
+
+        console.log(`圖表已於 ${new Date().toLocaleTimeString()} 重新計算並更新`);
+    }
+
+    renderCharts();
+    setInterval(renderCharts, 300000); // 依然維持每 5 分鐘自動刷新一次
 </script>
 
 </body>
