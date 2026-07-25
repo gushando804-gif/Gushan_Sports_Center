@@ -23,12 +23,16 @@
 </div>
 
 <script>
-    // 自動讀取同資料夾下的 CSV 檔案
+    // 建立一個變數來儲存圖表，以便更新時能先清空舊圖表
+    let myChart = null;
+
+    // 自動讀取 CSV 檔案 (加入時間戳記破解瀏覽器快取)
     async function fetchData() {
-        const response = await fetch('gym_capacity_log.csv');
+        // 在網址後方加上目前時間毫秒，強迫抓取最新檔案
+        const cacheBuster = new Date().getTime();
+        const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
         const data = await response.text();
         
-        // 解析 CSV (依照換行符號切割，並跳過第一行的標題)
         const rows = data.trim().split('\n').slice(1);
         const timeLabels = [];
         const peopleData = [];
@@ -36,7 +40,6 @@
         rows.forEach(row => {
             const cols = row.split(',');
             if(cols.length === 2) {
-                // 將時間字串簡化，去掉年份，只留 月-日 時:分
                 const shortTime = cols[0].substring(5, 16); 
                 timeLabels.push(shortTime);
                 peopleData.push(parseInt(cols[1]));
@@ -51,19 +54,24 @@
         const data = await fetchData();
         const ctx = document.getElementById('capacityChart').getContext('2d');
         
-        new Chart(ctx, {
+        // 【關鍵】如果畫面上已經有圖表了，必須先把它銷毀，否則新舊圖表會重疊閃爍
+        if (myChart !== null) {
+            myChart.destroy();
+        }
+        
+        myChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: data.timeLabels,
                 datasets: [{
                     label: '現場人數',
                     data: data.peopleData,
-                    borderColor: 'rgba(12, 180, 181, 1)', // 配合運動中心的青綠色
+                    borderColor: 'rgba(12, 180, 181, 1)',
                     backgroundColor: 'rgba(12, 180, 181, 0.2)',
                     borderWidth: 2,
                     pointRadius: 3,
                     fill: true,
-                    tension: 0.3 // 讓折線帶有平滑弧度
+                    tension: 0.3
                 }]
             },
             options: {
@@ -73,16 +81,26 @@
                     x: { ticks: { maxRotation: 45, minRotation: 45 } },
                     y: { 
                         beginAtZero: true, 
-                        suggestedMax: 70, // 設定容留上限為參考高點
+                        suggestedMax: 70,
                         title: { display: true, text: '人數' }
                     }
+                },
+                // 加入動畫取消，讓自動更新時畫面不會一直彈跳
+                animation: {
+                    duration: 0
                 }
             }
         });
+        
+        // 在網頁開發者工具印出更新時間，方便確認自動更新有在運作
+        console.log(`圖表已於 ${new Date().toLocaleTimeString()} 自動更新`);
     }
 
-    // 網頁載入後執行
+    // 1. 網頁剛打開時，立刻執行第一次載入
     renderChart();
+
+    // 2. 設定定時器：每 5 分鐘 (300000 毫秒) 自動重新載入一次資料
+    setInterval(renderChart, 300);
 </script>
 
 </body>
