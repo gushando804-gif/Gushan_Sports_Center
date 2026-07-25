@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By  # 【新增】用來定位畫面的元素
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import csv
@@ -8,7 +9,8 @@ import os
 import time
 from datetime import datetime
 
-URL = "https://teamweb.sporetrofit.com/Location/?LID=TMEGS"
+# 回到最乾淨的首頁網址
+URL = "https://teamweb.sporetrofit.com/Location/"
 CSV_FILENAME = "gym_capacity_log.csv"
 
 def fetch_and_record():
@@ -18,25 +20,38 @@ def fetch_and_record():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # 【新增】強制設定解析度為電腦版 1080p，避免網頁變成手機版排版
     chrome_options.add_argument("--window-size=1920,1080")
     
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
     
     try:
-        print(f"正在連線至 {URL} ...")
+        print(f"正在連線至首頁...")
         driver.get(URL)
         
-        # 【修改】GitHub 機器人可能網路較慢，給它 10 秒鐘慢慢轉
-        print("等待 10 秒鐘讓動態資料載入...")
-        time.sleep(10) 
+        # 等待場地清單載入
+        print("等待 5 秒鐘讓場地清單載入...")
+        time.sleep(5) 
+        
+        # === 【關鍵新增】模擬人類點擊 ===
+        try:
+            print("尋找「鼓山」選項並點擊...")
+            # 尋找畫面上任何包含「鼓山」文字的地方
+            gushan_btn = driver.find_element(By.XPATH, "//*[contains(text(), '鼓山')]")
+            # 使用 JavaScript 模擬點擊 (避免被網頁其他特效擋住)
+            driver.execute_script("arguments[0].click();", gushan_btn)
+            print("👉 點擊成功！等待 5 秒讓專屬資料載入...")
+            time.sleep(5)
+        except Exception as e:
+            print("找不到鼓山選項，可能網頁結構有變。")
+        # ===================================
         
         html = driver.page_source
         soup = BeautifulSoup(html, 'html.parser')
         
         current_people = None
         
+        # 尋找人數
         gym_divs = soup.find_all('div', class_='col-6')
         for div in gym_divs:
             if '健身房' in div.text:
@@ -58,12 +73,6 @@ def fetch_and_record():
             print(f"[{current_time}] 🎉 成功記錄：現在人數 {current_people} 人")
         else:
             print(f"[{current_time}] ❌ 警告：依然找不到人數！")
-            print("-" * 30)
-            print("【機器人視角大公開】以下是網頁載入後，畫面上實際出現的所有文字：")
-            # 把網頁裡的所有文字抽出來印在畫面上，方便我們除錯
-            clean_text = '\n'.join([line.strip() for line in soup.text.splitlines() if line.strip()])
-            print(clean_text[:1500])  # 印出前 1500 個字
-            print("-" * 30)
             
     except Exception as e:
         print(f"發生錯誤: {e}")
