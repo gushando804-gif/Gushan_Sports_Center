@@ -1,4 +1,3 @@
-Plaintext
 beautifulsoup4
 selenium
 webdriver-manager
