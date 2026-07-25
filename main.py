@@ -1,34 +1,44 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import csv
 import os
+import time
 from datetime import datetime
 
-# 嘗試在網址後方直接加上場館代號，強迫伺服器回傳鼓山的資料
 URL = "https://teamweb.sporetrofit.com/Location/?LID=TMEGS"
 CSV_FILENAME = "gym_capacity_log.csv"
 
 def fetch_and_record():
+    print("準備啟動虛擬瀏覽器...")
+    
+    # 設定 Chrome 為無頭模式 (Headless)，也就是在背景不顯示實體視窗執行
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # 自動下載並啟動對應版本的 Chrome Driver
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+        print(f"正在連線至 {URL} ...")
+        driver.get(URL)
         
-        # 使用 Session 來連線
-        session = requests.Session()
-        response = session.get(URL, headers=headers)
-        response.raise_for_status()
+        # 【關鍵步驟】強制等待 5 秒鐘，讓網頁的 JavaScript 有時間把人數載入出來
+        print("等待 5 秒鐘讓動態資料載入...")
+        time.sleep(5) 
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # === 【新增】偵錯訊息區塊 ===
-        print("【網頁載入測試】")
-        print(f"機器人實際抓到的網頁標題: {soup.title.text.strip() if soup.title else '找不到標題'}")
-        print("---------------------")
+        # 取得經過 JavaScript 渲染後的完整網頁原始碼
+        html = driver.page_source
+        soup = BeautifulSoup(html, 'html.parser')
         
         current_people = None
         
-        # 尋找人數
+        # 用一樣的方式尋找人數
         gym_divs = soup.find_all('div', class_='col-6')
         for div in gym_divs:
             if '健身房' in div.text:
@@ -40,6 +50,7 @@ def fetch_and_record():
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         if current_people:
+            # 成功抓到資料，寫入 CSV
             file_exists = os.path.isfile(CSV_FILENAME)
             with open(CSV_FILENAME, mode='a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
@@ -47,14 +58,16 @@ def fetch_and_record():
                     writer.writerow(["Timestamp", "Current_People"])
                 writer.writerow([current_time, current_people])
                 
-            print(f"[{current_time}] 成功記錄：現在人數 {current_people} 人")
+            print(f"[{current_time}] 🎉 成功記錄：現在人數 {current_people} 人")
         else:
-            print(f"[{current_time}] 警告：找不到人數！")
-            # 如果找不到，印出網頁最前面的程式碼，讓我們看看機器人到底抓到了什麼鬼東西
-            print(f"網頁前 300 字元預覽：\n{response.text[:300]}")
+            print(f"[{current_time}] ❌ 警告：依然找不到人數，可能網頁結構有變動。")
             
     except Exception as e:
         print(f"發生錯誤: {e}")
+    finally:
+        # 無論成功或失敗，最後一定要關閉瀏覽器釋放資源
+        driver.quit()
+        print("瀏覽器已關閉。")
 
 if __name__ == "__main__":
     fetch_and_record()
