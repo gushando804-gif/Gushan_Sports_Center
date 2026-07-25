@@ -14,13 +14,13 @@ CSV_FILENAME = "gym_capacity_log.csv"
 def fetch_and_record():
     print("準備啟動虛擬瀏覽器...")
     
-    # 設定 Chrome 為無頭模式 (Headless)，也就是在背景不顯示實體視窗執行
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    # 【新增】強制設定解析度為電腦版 1080p，避免網頁變成手機版排版
+    chrome_options.add_argument("--window-size=1920,1080")
     
-    # 自動下載並啟動對應版本的 Chrome Driver
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
     
@@ -28,17 +28,15 @@ def fetch_and_record():
         print(f"正在連線至 {URL} ...")
         driver.get(URL)
         
-        # 【關鍵步驟】強制等待 5 秒鐘，讓網頁的 JavaScript 有時間把人數載入出來
-        print("等待 5 秒鐘讓動態資料載入...")
-        time.sleep(5) 
+        # 【修改】GitHub 機器人可能網路較慢，給它 10 秒鐘慢慢轉
+        print("等待 10 秒鐘讓動態資料載入...")
+        time.sleep(10) 
         
-        # 取得經過 JavaScript 渲染後的完整網頁原始碼
         html = driver.page_source
         soup = BeautifulSoup(html, 'html.parser')
         
         current_people = None
         
-        # 用一樣的方式尋找人數
         gym_divs = soup.find_all('div', class_='col-6')
         for div in gym_divs:
             if '健身房' in div.text:
@@ -50,7 +48,6 @@ def fetch_and_record():
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         if current_people:
-            # 成功抓到資料，寫入 CSV
             file_exists = os.path.isfile(CSV_FILENAME)
             with open(CSV_FILENAME, mode='a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
@@ -60,12 +57,17 @@ def fetch_and_record():
                 
             print(f"[{current_time}] 🎉 成功記錄：現在人數 {current_people} 人")
         else:
-            print(f"[{current_time}] ❌ 警告：依然找不到人數，可能網頁結構有變動。")
+            print(f"[{current_time}] ❌ 警告：依然找不到人數！")
+            print("-" * 30)
+            print("【機器人視角大公開】以下是網頁載入後，畫面上實際出現的所有文字：")
+            # 把網頁裡的所有文字抽出來印在畫面上，方便我們除錯
+            clean_text = '\n'.join([line.strip() for line in soup.text.splitlines() if line.strip()])
+            print(clean_text[:1500])  # 印出前 1500 個字
+            print("-" * 30)
             
     except Exception as e:
         print(f"發生錯誤: {e}")
     finally:
-        # 無論成功或失敗，最後一定要關閉瀏覽器釋放資源
         driver.quit()
         print("瀏覽器已關閉。")
 
