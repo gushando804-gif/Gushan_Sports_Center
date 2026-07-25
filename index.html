@@ -3,37 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>鼓山運動中心 - 健身房大數據分析</title>
+    <title>鼓山運動中心 - 健身房人流分析</title>
     <!-- 引入 Chart.js 圖表套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .chart-container { position: relative; height: 50vh; width: 100%; margin-bottom: 40px; }
+        
+        /* 實時狀態大字報設計 */
+        .live-status { text-align: center; padding: 30px; background: #fff; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #0cb4b5; }
+        .live-title { font-size: 1.2rem; color: #777; margin: 0 0 10px 0; font-weight: bold; }
+        .live-numbers { font-size: 4rem; font-weight: bold; color: #333; margin: 0; }
+        .live-percentage { font-size: 2rem; color: #888; font-weight: normal; }
+        .text-danger { color: #e74c3c !important; } /* 超過 100% 時變為紅色 */
+
+        h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; }
+        .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- 實時狀態大字報 -->
+    <div class="live-status">
+        <p class="live-title">🏃‍♂️ 健身房 現在人數 / 容留人數</p>
+        <p class="live-numbers">
+            <span id="currentPeople">--</span> / 70 
+            <span class="live-percentage" id="currentPercent">( --% )</span>
+        </p>
+    </div>
+
+    <h2>📈 今日人數趨勢 (每半小時)</h2>
+    <div class="chart-container">
+        <canvas id="todayChart"></canvas>
+    </div>
+
     <h2>📊 過去一個月：週一至週日 平均人數</h2>
     <div class="chart-container">
         <canvas id="dayChart"></canvas>
     </div>
 
-    <h2>⏰ 過去一個月：每日各時段 平均人數</h2>
+    <h2>⏰ 過去一個月：營業時段 平均人數</h2>
     <div class="chart-container">
         <canvas id="hourChart"></canvas>
     </div>
 </div>
 
 <script>
+    let todayChartInstance = null;
     let dayChartInstance = null;
     let hourChartInstance = null;
 
+    const CAPACITY = 70; // 設定容留上限
+
     // 定義動態顏色計算函數：最高分紅，最低分草綠，其他灰
     function getBarColors(dataArray) {
-        // 過濾掉沒有資料(0)的項目再來算最小值，避免把沒開館的時間當作最少人
         const validData = dataArray.filter(v => v > 0); 
         const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
         const minVal = validData.length > 0 ? Math.min(...validData) : 0;
@@ -46,66 +70,122 @@
     }
 
     async function fetchAndProcessData() {
-        // 加上時間戳記避免快取
         const cacheBuster = new Date().getTime();
         const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
         const textData = await response.text();
-        
         const rows = textData.trim().split('\n').slice(1);
         
-        // 抓出「一個月前」的時間點，用來過濾資料
         const now = new Date();
+        // 取得台灣時間的今天日期字串 (YYYY-MM-DD格式，用來抓今日數據)
+        const todayDateString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
 
-        // 準備用來統計的陣列
-        let daySums = Array(7).fill(0);   // 星期日=0, 星期一=1 ...
+        let latestPeople = '--';
+        let todayLabels = [];
+        let todayData = [];
+
+        let daySums = Array(7).fill(0);
         let dayCounts = Array(7).fill(0);
-        let hourSums = Array(24).fill(0); // 00點到23點
+        let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
 
         rows.forEach(row => {
             const cols = row.split(',');
             if (cols.length === 2) {
-                // 將字串 "YYYY-MM-DD HH:MM:SS" 轉換成 Date 物件 (針對台灣時區格式修正)
-                const recordTime = new Date(cols[0].replace(/-/g, '/'));
+                const timeStr = cols[0];
+                const recordTime = new Date(timeStr.replace(/-/g, '/'));
                 const people = parseInt(cols[1]);
 
-                // 只統計過去一個月的資料，並且人數要大於等於 0
-                if (recordTime >= oneMonthAgo && !isNaN(people)) {
-                    // 統計星期幾
-                    const day = recordTime.getDay();
-                    daySums[day] += people;
-                    dayCounts[day]++;
+                if (!isNaN(people)) {
+                    // 持續更新，迴圈結束時就會拿到「最後一筆」的即時人數
+                    latestPeople = people;
 
-                    // 統計小時
-                    const hour = recordTime.getHours();
-                    hourSums[hour] += people;
-                    hourCounts[hour]++;
+                    // 抓取今日的折線圖資料
+                    if (timeStr.startsWith(todayDateString)) {
+                        todayLabels.push(timeStr.substring(11, 16)); // 只保留 HH:MM
+                        todayData.push(people);
+                    }
+
+                    // 統計過去一個月的平均值
+                    if (recordTime >= oneMonthAgo) {
+                        const day = recordTime.getDay();
+                        daySums[day] += people;
+                        dayCounts[day]++;
+
+                        const hour = recordTime.getHours();
+                        hourSums[hour] += people;
+                        hourCounts[hour]++;
+                    }
                 }
             }
         });
 
-        // 計算星期一到星期日的平均值 (為了排版順序，我們將陣列排序為 [一, 二, 三, 四, 五, 六, 日])
+        // 更新最上方的實時大字報
+        if (latestPeople !== '--') {
+            document.getElementById('currentPeople').innerText = latestPeople;
+            let percent = Math.round((latestPeople / CAPACITY) * 100);
+            const percentElement = document.getElementById('currentPercent');
+            percentElement.innerText = `(${percent}%)`;
+            
+            // 如果超過 100%，將數字與百分比變成紅色警告
+            if (percent >= 100) {
+                document.getElementById('currentPeople').classList.add('text-danger');
+                percentElement.classList.add('text-danger');
+            } else {
+                document.getElementById('currentPeople').classList.remove('text-danger');
+                percentElement.classList.remove('text-danger');
+            }
+        }
+
+        // 計算星期一到星期日平均
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
         const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
 
-        // 計算 00:00 到 23:00 的平均值
+        // 計算營業時段 (06:00 到 22:00) 的平均值
         const hourLabels = [];
         const hourAvgs = [];
-        for (let i = 0; i < 24; i++) {
+        for (let i = 6; i <= 22; i++) {
             hourLabels.push(i.toString().padStart(2, '0') + ':00');
             hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
         }
 
-        return { dayLabels, dayAvgs, hourLabels, hourAvgs };
+        return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
     }
 
     async function renderCharts() {
         const data = await fetchAndProcessData();
         
-        // --- 繪製第一個圖表：週一至週日 ---
+        // --- 繪製 1. 今日人數折線圖 ---
+        if (todayChartInstance) todayChartInstance.destroy();
+        const ctxToday = document.getElementById('todayChart').getContext('2d');
+        todayChartInstance = new Chart(ctxToday, {
+            type: 'line',
+            data: {
+                labels: data.todayLabels,
+                datasets: [{
+                    label: '今日現場人數',
+                    data: data.todayData,
+                    borderColor: 'rgba(12, 180, 181, 1)',
+                    backgroundColor: 'rgba(12, 180, 181, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                scales: { 
+                    x: { ticks: { maxRotation: 45, minRotation: 45 } },
+                    y: { beginAtZero: true, suggestedMax: CAPACITY, title: { display: true, text: '人數' } } 
+                }
+            }
+        });
+
+        // --- 繪製 2. 週一至週日平均 長條圖 ---
         if (dayChartInstance) dayChartInstance.destroy();
         const ctxDay = document.getElementById('dayChart').getContext('2d');
         dayChartInstance = new Chart(ctxDay, {
@@ -121,12 +201,12 @@
             },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-                plugins: { legend: { display: false } }, // 隱藏多餘的圖例
+                plugins: { legend: { display: false } }, 
                 scales: { y: { beginAtZero: true, title: { display: true, text: '平均人數' } } }
             }
         });
 
-        // --- 繪製第二個圖表：各時段 ---
+        // --- 繪製 3. 營業時段平均 長條圖 ---
         if (hourChartInstance) hourChartInstance.destroy();
         const ctxHour = document.getElementById('hourChart').getContext('2d');
         hourChartInstance = new Chart(ctxHour, {
@@ -154,7 +234,7 @@
     }
 
     renderCharts();
-    setInterval(renderCharts, 300000); // 依然維持每 5 分鐘自動刷新一次
+    setInterval(renderCharts, 10000); 
 </script>
 
 </body>
