@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鼓山運動中心 - 人流統計圖</title>
+    <!-- 引入 Chart.js 圖表套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .chart-container { position: relative; height: 60vh; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>鼓山運動中心 健身房人數趨勢</h2>
+    <div class="chart-container">
+        <canvas id="capacityChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // 自動讀取同資料夾下的 CSV 檔案
+    async function fetchData() {
+        const response = await fetch('gym_capacity_log.csv');
+        const data = await response.text();
+        
+        // 解析 CSV (依照換行符號切割，並跳過第一行的標題)
+        const rows = data.trim().split('\n').slice(1);
+        const timeLabels = [];
+        const peopleData = [];
+        
+        rows.forEach(row => {
+            const cols = row.split(',');
+            if(cols.length === 2) {
+                // 將時間字串簡化，去掉年份，只留 月-日 時:分
+                const shortTime = cols[0].substring(5, 16); 
+                timeLabels.push(shortTime);
+                peopleData.push(parseInt(cols[1]));
+            }
+        });
+        
+        return { timeLabels, peopleData };
+    }
+
+    // 繪製圖表
+    async function renderChart() {
+        const data = await fetchData();
+        const ctx = document.getElementById('capacityChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.timeLabels,
+                datasets: [{
+                    label: '現場人數',
+                    data: data.peopleData,
+                    borderColor: 'rgba(12, 180, 181, 1)', // 配合運動中心的青綠色
+                    backgroundColor: 'rgba(12, 180, 181, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    fill: true,
+                    tension: 0.3 // 讓折線帶有平滑弧度
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { maxRotation: 45, minRotation: 45 } },
+                    y: { 
+                        beginAtZero: true, 
+                        suggestedMax: 70, // 設定容留上限為參考高點
+                        title: { display: true, text: '人數' }
+                    }
+                }
+            }
+        });
+    }
+
+    // 網頁載入後執行
+    renderChart();
+</script>
+
+</body>
+</html>
