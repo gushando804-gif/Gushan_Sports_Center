@@ -60,9 +60,23 @@ def fetch_and_record():
                     current_people = people_div.text.strip()
                 break
         
-        # 設定台灣時區 (UTC+8)
+        # 設定台灣時區
         tw_tz = timezone(timedelta(hours=8))
-        current_time = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(tw_tz)
+        
+        # 判斷分鐘數，將時間強制定型為 00 分或 30 分
+        if now.minute >= 40:
+            # 40~59分 (包含 55 分執行)，進位到下一個小時的 00 分
+            now = now + timedelta(hours=1)
+            now = now.replace(minute=0, second=0)
+        elif now.minute >= 10:
+            # 10~39分 (包含 25 分執行)，對齊到當前小時的 30 分
+            now = now.replace(minute=30, second=0)
+        else:
+            # 00~09分 (以防 GitHub 嚴重延遲才執行)，對齊到當前小時的 00 分
+            now = now.replace(minute=0, second=0)
+            
+        current_time = now.strftime("%Y-%m-%d %H:%M:%S")
         
         if current_people:
             file_exists = os.path.isfile(CSV_FILENAME)
