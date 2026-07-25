@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import csv
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # 回到最乾淨的首頁網址
 URL = "https://teamweb.sporetrofit.com/Location/"
@@ -60,7 +60,9 @@ def fetch_and_record():
                     current_people = people_div.text.strip()
                 break
         
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # 設定台灣時區 (UTC+8)
+        tw_tz = timezone(timedelta(hours=8))
+        current_time = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
         
         if current_people:
             file_exists = os.path.isfile(CSV_FILENAME)
