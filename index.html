@@ -160,12 +160,6 @@
     async function renderCharts() {
         const data = await fetchAndProcessData();
         
-        // 共用字型放大設定
-        const axisFontConfig = {
-            ticks: { font: { size: 14 } },
-            title: { font: { size: 15, weight: 'bold' } }
-        };
-
         // --- 繪製 1. 今日每半小時平均折線圖 ---
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
@@ -187,8 +181,13 @@
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
                 scales: { 
-                    x: { ticks: { font: { size: 13 }, maxRotation: 45, minRotation: 45 } },
-                    y: { ticks: { font: { size: 14 } }, beginAtZero: true, suggestedMax: CAPACITY, title: { display: true, text: '平均人數', font: { size: 14 } } } 
+                    x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    y: { 
+                        ticks: { font: { size: 14, weight: 'bold' } }, 
+                        beginAtZero: true, 
+                        suggestedMax: CAPACITY, 
+                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
+                    } 
                 }
             }
         });
@@ -211,8 +210,12 @@
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
                 plugins: { legend: { display: false } }, 
                 scales: { 
-                    x: { ticks: { font: { size: 14 } } },
-                    y: { ticks: { font: { size: 14 } }, beginAtZero: true, title: { display: true, text: '平均人數', font: { size: 14 } } } 
+                    x: { ticks: { font: { size: 14, weight: 'bold' } } },
+                    y: { 
+                        ticks: { font: { size: 14, weight: 'bold' } }, 
+                        beginAtZero: true, 
+                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
+                    } 
                 }
             }
         });
@@ -235,8 +238,12 @@
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
                 plugins: { legend: { display: false } },
                 scales: { 
-                    x: { ticks: { font: { size: 13 }, maxRotation: 45, minRotation: 45 } },
-                    y: { ticks: { font: { size: 14 } }, beginAtZero: true, title: { display: true, text: '平均人數', font: { size: 14 } } } 
+                    x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    y: { 
+                        ticks: { font: { size: 14, weight: 'bold' } }, 
+                        beginAtZero: true, 
+                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
+                    } 
                 }
             }
         });
