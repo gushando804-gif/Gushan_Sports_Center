@@ -15,7 +15,7 @@
         .live-title { font-size: 1.2rem; color: #777; margin: 0 0 10px 0; font-weight: bold; }
         .live-numbers { font-size: 4rem; font-weight: bold; color: #333; margin: 0; }
         .live-percentage { font-size: 2rem; color: #888; font-weight: normal; }
-        .text-danger { color: #e74c3c !important; } /* 超過 100% 時變為紅色 */
+        .text-danger { color: #e74c3c !important; }
 
         h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; }
         .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
@@ -33,7 +33,7 @@
         </p>
     </div>
 
-    <h2>📈 今日人數趨勢 (每半小時)</h2>
+    <h2>📈 今日人數趨勢 (每半小時平均)</h2>
     <div class="chart-container">
         <canvas id="todayChart"></canvas>
     </div>
@@ -56,7 +56,6 @@
 
     const CAPACITY = 70; // 設定容留上限
 
-    // 定義動態顏色計算函數：最高分紅，最低分草綠，其他灰
     function getBarColors(dataArray) {
         const validData = dataArray.filter(v => v > 0); 
         const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
@@ -76,15 +75,15 @@
         const rows = textData.trim().split('\n').slice(1);
         
         const now = new Date();
-        // 取得台灣時間的今天日期字串 (YYYY-MM-DD格式，用來抓今日數據)
         const todayDateString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
         
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
 
         let latestPeople = '--';
-        let todayLabels = [];
-        let todayData = [];
+        
+        // 用來計算今日每半小時平均的暫存物件 { "06:00": {sum: 10, count: 2}, "06:30": ... }
+        let todayHalfHourMap = {};
 
         let daySums = Array(7).fill(0);
         let dayCounts = Array(7).fill(0);
@@ -99,13 +98,21 @@
                 const people = parseInt(cols[1]);
 
                 if (!isNaN(people)) {
-                    // 持續更新，迴圈結束時就會拿到「最後一筆」的即時人數
                     latestPeople = people;
 
-                    // 抓取今日的折線圖資料
+                    // 處理今日每半小時平均聚合
                     if (timeStr.startsWith(todayDateString)) {
-                        todayLabels.push(timeStr.substring(11, 16)); // 只保留 HH:MM
-                        todayData.push(people);
+                        const hour = recordTime.getHours();
+                        const minute = recordTime.getMinutes();
+                        // 歸納到 00 或 30 分
+                        const halfHourSlot = minute < 30 ? '00' : '30';
+                        const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
+
+                        if (!todayHalfHourMap[timeKey]) {
+                            todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
+                        }
+                        todayHalfHourMap[timeKey].sum += people;
+                        todayHalfHourMap[timeKey].count += 1;
                     }
 
                     // 統計過去一個月的平均值
@@ -122,6 +129,11 @@
             }
         });
 
+        // 整理今日圖表資料（按時間排序）
+        const sortedKeys = Object.keys(todayHalfHourMap).sort();
+        const todayLabels = sortedKeys;
+        const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
+
         // 更新最上方的實時大字報
         if (latestPeople !== '--') {
             document.getElementById('currentPeople').innerText = latestPeople;
@@ -129,7 +141,6 @@
             const percentElement = document.getElementById('currentPercent');
             percentElement.innerText = `(${percent}%)`;
             
-            // 如果超過 100%，將數字與百分比變成紅色警告
             if (percent >= 100) {
                 document.getElementById('currentPeople').classList.add('text-danger');
                 percentElement.classList.add('text-danger');
@@ -139,12 +150,10 @@
             }
         }
 
-        // 計算星期一到星期日平均
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
         const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
 
-        // 計算營業時段 (06:00 到 22:00) 的平均值
         const hourLabels = [];
         const hourAvgs = [];
         for (let i = 6; i <= 22; i++) {
@@ -158,7 +167,7 @@
     async function renderCharts() {
         const data = await fetchAndProcessData();
         
-        // --- 繪製 1. 今日人數折線圖 ---
+        // --- 繪製 1. 今日每半小時平均折線圖 ---
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
         todayChartInstance = new Chart(ctxToday, {
@@ -166,7 +175,7 @@
             data: {
                 labels: data.todayLabels,
                 datasets: [{
-                    label: '今日現場人數',
+                    label: '今日每半小時平均人數',
                     data: data.todayData,
                     borderColor: 'rgba(12, 180, 181, 1)',
                     backgroundColor: 'rgba(12, 180, 181, 0.2)',
@@ -180,7 +189,7 @@
                 responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
                 scales: { 
                     x: { ticks: { maxRotation: 45, minRotation: 45 } },
-                    y: { beginAtZero: true, suggestedMax: CAPACITY, title: { display: true, text: '人數' } } 
+                    y: { beginAtZero: true, suggestedMax: CAPACITY, title: { display: true, text: '平均人數' } } 
                 }
             }
         });
@@ -234,7 +243,7 @@
     }
 
     renderCharts();
-    setInterval(renderCharts, 10000); 
+    setInterval(renderCharts, 300000); 
 </script>
 
 </body>
