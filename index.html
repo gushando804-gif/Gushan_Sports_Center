@@ -30,7 +30,6 @@
         .scrollable-chart-inner {
             position: relative;
             height: 45vh;
-            /* 預設最小寬度，確保時間點過多時產生水平滾動條 */
             min-width: 700px; 
         }
     </style>
@@ -71,6 +70,13 @@
     let hourChartInstance = null;
 
     const CAPACITY = 70; // 設定容留上限
+
+    // 設定全域 Tooltip 字體大小的通用設定
+    const tooltipFontConfig = {
+        titleFont: { size: 16, weight: 'bold' },
+        bodyFont: { size: 16 },
+        padding: 10
+    };
 
     function getBarColors(dataArray) {
         const validData = dataArray.filter(v => v > 0); 
@@ -198,6 +204,9 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 0 },
+                plugins: {
+                    tooltip: tooltipFontConfig
+                },
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
@@ -210,7 +219,7 @@
             }
         });
 
-        // 渲染完成後自動捲動到最右側 (顯示最新 6 小時/最新數據)
+        // 渲染完成後自動捲動到最右側
         const wrapper = document.getElementById('todayChartWrapper');
         wrapper.scrollLeft = wrapper.scrollWidth;
 
@@ -232,7 +241,10 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 0 },
-                plugins: { legend: { display: false } }, 
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: tooltipFontConfig
+                }, 
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } } },
                     y: { 
@@ -262,7 +274,10 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 0 },
-                plugins: { legend: { display: false } },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: tooltipFontConfig
+                },
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
