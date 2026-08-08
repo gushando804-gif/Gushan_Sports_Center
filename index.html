@@ -19,6 +19,20 @@
 
         h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; }
         .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
+
+        /* 針對第一個圖表支援水平滑動 */
+        .scrollable-chart-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 40px;
+        }
+        .scrollable-chart-inner {
+            position: relative;
+            height: 45vh;
+            /* 預設最小寬度，確保時間點過多時產生水平滾動條 */
+            min-width: 700px; 
+        }
     </style>
 </head>
 <body>
@@ -34,8 +48,10 @@
     </div>
 
     <h2>📈 今日人數趨勢 (每半小時平均)</h2>
-    <div class="chart-container">
-        <canvas id="todayChart"></canvas>
+    <div class="scrollable-chart-wrapper" id="todayChartWrapper">
+        <div class="scrollable-chart-inner">
+            <canvas id="todayChart"></canvas>
+        </div>
     </div>
 
     <h2>📊 過去一個月：週一至週日 平均人數</h2>
@@ -159,7 +175,7 @@
 
     async function renderCharts() {
         const data = await fetchAndProcessData();
-        
+
         // --- 繪製 1. 今日每半小時平均折線圖 ---
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
@@ -179,7 +195,9 @@
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
@@ -191,6 +209,10 @@
                 }
             }
         });
+
+        // 渲染完成後自動捲動到最右側 (顯示最新 6 小時/最新數據)
+        const wrapper = document.getElementById('todayChartWrapper');
+        wrapper.scrollLeft = wrapper.scrollWidth;
 
         // --- 繪製 2. 週一至週日平均 長條圖 ---
         if (dayChartInstance) dayChartInstance.destroy();
@@ -207,7 +229,9 @@
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
                 plugins: { legend: { display: false } }, 
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } } },
@@ -235,7 +259,9 @@
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
                 plugins: { legend: { display: false } },
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
