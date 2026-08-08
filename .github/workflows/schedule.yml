@@ -2,7 +2,7 @@ name: Gym Capacity Auto Tracker
 
 on:
   schedule:
-    - cron: '26,56 21-23,0-14 * * *'
+    - cron: '1-59/5 21-23,0-14 * * *'
   workflow_dispatch:
 
 jobs:
