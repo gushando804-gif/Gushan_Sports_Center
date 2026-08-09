@@ -113,6 +113,7 @@
         padding: 10
     };
 
+    // 國定假日判定清單 (格式: MM-DD)
     const TAIWAN_HOLIDAYS = [
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
@@ -135,6 +136,7 @@
         return { text: '擁擠', class: 'bg-red' };
     }
 
+    // 將 Date 物件精準對齊至半小時 Key (例如 16:25 -> "16:30")
     function getHalfHourKey(dateObj) {
         const h = dateObj.getHours();
         const m = dateObj.getMinutes();
@@ -177,7 +179,7 @@
                     latestPeople = people;
                     latestRecordTime = recordTime;
 
-                    // 💡 自動修復舊測試資料：超過 70 人的異常數據視為上限 70 人
+                    // 💡 過濾舊測試資料的破百異常數值
                     const validPeople = Math.min(CAPACITY, people);
 
                     const hour = recordTime.getHours();
@@ -277,37 +279,47 @@
 
         const factorText = isHoliday ? "🎉 國定假日模式" : "";
 
+        // 1. 計算 30 分鐘後預測人數
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
-        const time60 = new Date(nowTime.getTime() + 60 * 60000);
+        const pred30People = getSmoothedPred(time30, activeSums, activeCounts, currentHistAvg, currentPeople);
 
-        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', activeSums, activeCounts, currentHistAvg, currentPeople, factorText);
-        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', activeSums, activeCounts, currentHistAvg, currentPeople, factorText);
+        // 2. 計算 60 分鐘後預測人數 (以 30 分鐘預估值作二次平滑，避免劇烈震盪)
+        const time60 = new Date(nowTime.getTime() + 60 * 60000);
+        const pred60People = getSmoothedPred(time60, activeSums, activeCounts, currentHistAvg, pred30People);
+
+        // 繪製 UI
+        renderPredUI(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', pred30People, factorText);
+        renderPredUI(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', pred60People, factorText);
     }
 
-    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, activeSums, activeCounts, currentHistAvg, currentPeople, factorText) {
+    function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
+        const hour = targetTime.getHours();
+        if (hour < 6 || hour > 22) return -1; // 已打烊
+
+        const key = getHalfHourKey(targetTime);
+        const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
+            ? (activeSums[key] / activeCounts[key])
+            : basePeople;
+
+        const trendDelta = futureHistAvg - baseHistAvg;
+        
+        // 💡 0.4 平滑指數：限制半小時內最大的人數變化幅度
+        let pred = Math.round(basePeople + (trendDelta * 0.4));
+        return Math.max(0, Math.min(CAPACITY, pred));
+    }
+
+    function renderPredUI(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, predPeople, factorText) {
         const hour = futureTime.getHours();
-        const key = getHalfHourKey(futureTime);
         const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
 
         document.getElementById(timeElemId).innerText = timeFormatted;
 
-        if (hour < 6 || hour > 22) {
+        if (predPeople === -1) {
             document.getElementById(textElemId).innerText = '已打烊';
             document.getElementById(badgeElemId).style.display = 'none';
             document.getElementById(factorElemId).innerText = '';
             return;
         }
-
-        const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
-            ? (activeSums[key] / activeCounts[key])
-            : currentPeople;
-
-        // 💡 趨勢增量法：未來歷史人數 - 當下歷史人數 = 歷史時間趨勢變化量
-        const trendDelta = futureHistAvg - currentHistAvg;
-
-        // 預測人數 = 當前真實人數 + 歷史趨勢變化量
-        let predPeople = Math.round(currentPeople + trendDelta);
-        predPeople = Math.max(0, Math.min(CAPACITY, predPeople));
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
