@@ -12,11 +12,22 @@
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
         /* 實時狀態大字報設計 */
-        .live-status { text-align: center; padding: 30px; background: #fff; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #0cb4b5; }
+        .live-status { text-align: center; padding: 30px; background: #fff; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #0cb4b5; }
         .live-title { font-size: 1.2rem; color: #777; margin: 0 0 10px 0; font-weight: bold; }
         .live-numbers { font-size: 4rem; font-weight: bold; color: #333; margin: 0; }
         .live-percentage { font-size: 2rem; color: #888; font-weight: normal; }
         .text-danger { color: #e74c3c !important; }
+
+        /* 未來一小時預測區塊樣式 */
+        .prediction-box { display: flex; justify-content: space-around; background: #f8fafc; padding: 18px; border-radius: 10px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
+        .prediction-item { text-align: center; flex: 1; border-right: 1px solid #e2e8f0; }
+        .prediction-item:last-child { border-right: none; }
+        .pred-time { font-size: 0.95rem; color: #64748b; font-weight: bold; margin-bottom: 5px; }
+        .pred-status { font-size: 1.25rem; font-weight: bold; color: #1e293b; }
+        .pred-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.9rem; color: #fff; margin-top: 5px; }
+        .bg-green { background-color: #2eb85c; }
+        .bg-yellow { background-color: #f9b115; color: #333; }
+        .bg-red { background-color: #e55353; }
 
         h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; }
         .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
@@ -47,6 +58,20 @@
         </p>
     </div>
 
+    <!-- 未來一小時擁擠度預測卡片 -->
+    <div class="prediction-box">
+        <div class="prediction-item">
+            <div class="pred-time">🔮 預測 30 分鐘後 (<span id="pred30Time">--:--</span>)</div>
+            <div class="pred-status" id="pred30Text">計算中...</div>
+            <div id="pred30Badge" class="pred-badge" style="display:none;">--</div>
+        </div>
+        <div class="prediction-item">
+            <div class="pred-time">🔮 預測 60 分鐘後 (<span id="pred60Time">--:--</span>)</div>
+            <div class="pred-status" id="pred60Text">計算中...</div>
+            <div id="pred60Badge" class="pred-badge" style="display:none;">--</div>
+        </div>
+    </div>
+
     <h2>📈 今日人數趨勢 (每半小時平均)</h2>
     <div class="scrollable-chart-wrapper" id="todayChartWrapper">
         <div class="scrollable-chart-inner">
@@ -72,7 +97,6 @@
 
     const CAPACITY = 70; // 設定容留上限
 
-    // 設定全域 Tooltip 字體大小的通用設定
     const tooltipFontConfig = {
         titleFont: { size: 16, weight: 'bold' },
         bodyFont: { size: 16 },
@@ -85,10 +109,16 @@
         const minVal = validData.length > 0 ? Math.min(...validData) : 0;
 
         return dataArray.map(val => {
-            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.8)';  // 紅色 (最多人)
-            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.8)';   // 草綠色 (最少人)
-            return 'rgba(200, 200, 200, 0.5)';                                // 灰色 (一般)
+            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.8)'; 
+            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.8)';  
+            return 'rgba(200, 200, 200, 0.5)';                                
         });
+    }
+
+    function getCrowdednessStatus(people) {
+        if (people <= 25) return { text: '舒適', class: 'bg-green' };
+        if (people <= 50) return { text: '適中', class: 'bg-yellow' };
+        return { text: '擁擠', class: 'bg-red' };
     }
 
     async function fetchAndProcessData() {
@@ -104,12 +134,17 @@
         oneMonthAgo.setMonth(now.getMonth() - 1);
 
         let latestPeople = '--';
+        let latestRecordTime = null;
         let todayHalfHourMap = {};
 
         let daySums = Array(7).fill(0);
         let dayCounts = Array(7).fill(0);
         let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
+
+        // 歷史同期（每 30 分鐘）統計數據
+        let historyHalfHourSums = {};
+        let historyHalfHourCounts = {};
 
         rows.forEach(row => {
             const cols = row.split(',');
@@ -120,32 +155,39 @@
 
                 if (!isNaN(people)) {
                     latestPeople = people;
+                    latestRecordTime = recordTime;
 
+                    const hour = recordTime.getHours();
+                    const minute = recordTime.getMinutes();
+                    const halfHourSlot = minute < 30 ? '00' : '30';
+                    const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
+
+                    // 今日數據
                     if (timeStr.startsWith(todayDateString)) {
-                       const hour = recordTime.getHours();
-    
-                      // 💡 只處理營業時間內 (06:00 ~ 22:59) 的紀錄，自動剔除 06:00 以前的資料
-                      if (hour >= 6 && hour <= 22) {
-                      const minute = recordTime.getMinutes();
-                      const halfHourSlot = minute < 30 ? '00' : '30';
-                      const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
-
-                      if (!todayHalfHourMap[timeKey]) {
-                      todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
-                      }
-                      todayHalfHourMap[timeKey].sum += people;
-                      todayHalfHourMap[timeKey].count += 1;
+                        if (hour >= 6 && hour <= 22) {
+                            if (!todayHalfHourMap[timeKey]) {
+                                todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
+                            }
+                            todayHalfHourMap[timeKey].sum += people;
+                            todayHalfHourMap[timeKey].count += 1;
+                        }
                     }
-                }
 
+                    // 過去一個月歷史統計
                     if (recordTime >= oneMonthAgo) {
                         const day = recordTime.getDay();
                         daySums[day] += people;
                         dayCounts[day]++;
 
-                        const hour = recordTime.getHours();
                         hourSums[hour] += people;
                         hourCounts[hour]++;
+
+                        if (!historyHalfHourSums[timeKey]) {
+                            historyHalfHourSums[timeKey] = 0;
+                            historyHalfHourCounts[timeKey] = 0;
+                        }
+                        historyHalfHourSums[timeKey] += people;
+                        historyHalfHourCounts[timeKey] += 1;
                     }
                 }
             }
@@ -155,6 +197,7 @@
         const todayLabels = sortedKeys;
         const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
+        // 更新實時大字報
         if (latestPeople !== '--') {
             document.getElementById('currentPeople').innerText = latestPeople;
             let percent = Math.round((latestPeople / CAPACITY) * 100);
@@ -168,6 +211,9 @@
                 document.getElementById('currentPeople').classList.remove('text-danger');
                 percentElement.classList.remove('text-danger');
             }
+
+            // === 計算未來一小時擁擠度預測 ===
+            calculatePrediction(latestRecordTime, latestPeople, historyHalfHourSums, historyHalfHourCounts);
         }
 
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
@@ -182,6 +228,63 @@
         }
 
         return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
+    }
+
+    function calculatePrediction(nowTime, currentPeople, historySums, historyCounts) {
+        if (!nowTime) return;
+
+        // 計算目前時間點的 Key
+        const currentHour = nowTime.getHours();
+        const currentMinSlot = nowTime.getMinutes() < 30 ? '00' : '30';
+        const currentKey = `${String(currentHour).padStart(2, '0')}:${currentMinSlot}`;
+
+        // 當下時段的歷史平均人數
+        const currentHistAvg = (historyCounts[currentKey] && historyCounts[currentKey] > 0)
+            ? (historySums[currentKey] / historyCounts[currentKey])
+            : currentPeople;
+
+        // 當下偏差係數 (例如今天比平時多 20% 人)
+        const ratio = currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1;
+
+        // 計算 30 分鐘與 60 分鐘後的時間點
+        const time30 = new Date(nowTime.getTime() + 30 * 60000);
+        const time60 = new Date(nowTime.getTime() + 60 * 60000);
+
+        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', ratio, historySums, historyCounts);
+        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', ratio, historySums, historyCounts);
+    }
+
+    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, ratio, historySums, historyCounts) {
+        const hour = futureTime.getHours();
+        const minSlot = futureTime.getMinutes() < 30 ? '00' : '30';
+        const key = `${String(hour).padStart(2, '0')}:${minSlot}`;
+        const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
+
+        document.getElementById(timeElemId).innerText = timeFormatted;
+
+        // 若超出一天的營業時間 (06:00 ~ 22:30)
+        if (hour < 6 || hour > 22) {
+            document.getElementById(textElemId).innerText = '已打烊';
+            document.getElementById(badgeElemId).style.display = 'none';
+            return;
+        }
+
+        const histAvg = (historyCounts[key] && historyCounts[key] > 0)
+            ? (historySums[key] / historyCounts[key])
+            : 20;
+
+        // 預測人數 = 未來歷史平均 * 當下偏差係數
+        let predPeople = Math.round(histAvg * ratio);
+        predPeople = Math.max(0, Math.min(CAPACITY, predPeople)); // 限制在 0 ~ 70 人
+
+        const statusInfo = getCrowdednessStatus(predPeople);
+
+        document.getElementById(textElemId).innerText = `約 ${predPeople} 人`;
+        
+        const badgeElem = document.getElementById(badgeElemId);
+        badgeElem.innerText = statusInfo.text;
+        badgeElem.className = `pred-badge ${statusInfo.class}`;
+        badgeElem.style.display = 'inline-block';
     }
 
     async function renderCharts() {
@@ -201,7 +304,7 @@
                     backgroundColor: 'rgba(12, 180, 181, 0.2)',
                     borderWidth: 3,
                     pointRadius: 4,
-                    fill: false, // 關閉單色填滿以展示背景三色區間
+                    fill: false,
                     tension: 0.3
                 }]
             },
@@ -211,7 +314,6 @@
                 animation: { duration: 0 },
                 plugins: {
                     tooltip: tooltipFontConfig,
-                    // 背景擁擠度三色標註設定
                     annotation: {
                         annotations: {
                             comfortZone: {
@@ -264,14 +366,13 @@
                     y: { 
                         ticks: { font: { size: 14, weight: 'bold' } }, 
                         beginAtZero: true, 
-                        max: CAPACITY, // 固定 Y 軸最大上限為 70 人
+                        max: CAPACITY,
                         title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
                     } 
                 }
             }
         });
 
-        // 渲染完成後自動捲動到最右側
         const wrapper = document.getElementById('todayChartWrapper');
         wrapper.scrollLeft = wrapper.scrollWidth;
 
