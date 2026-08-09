@@ -1,0 +1,21 @@
+{
+  "name": "鼓山運動中心人流分析",
+  "short_name": "鼓山健身房",
+  "description": "即時監控與預測鼓山運動中心健身房人流擁擠度",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0cb4b5",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2964/2964514.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2964/2964514.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
