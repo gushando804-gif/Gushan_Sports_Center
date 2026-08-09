@@ -113,7 +113,6 @@
         padding: 10
     };
 
-    // 國定假日判定清單 (格式: MM-DD)
     const TAIWAN_HOLIDAYS = [
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
@@ -134,6 +133,14 @@
         if (people <= 25) return { text: '舒適', class: 'bg-green' };
         if (people <= 50) return { text: '適中', class: 'bg-yellow' };
         return { text: '擁擠', class: 'bg-red' };
+    }
+
+    // 將任意 Date 物件對齊到最接近的半小時 Key (例如 16:25 -> "16:30")
+    function getHalfHourKey(dateObj) {
+        const h = dateObj.getHours();
+        const m = dateObj.getMinutes();
+        const slot = m < 30 ? '00' : '30';
+        return `${String(h).padStart(2, '0')}:${slot}`;
     }
 
     async function fetchAndProcessData() {
@@ -172,9 +179,7 @@
                     latestRecordTime = recordTime;
 
                     const hour = recordTime.getHours();
-                    const minute = recordTime.getMinutes();
-                    const halfHourSlot = minute < 30 ? '00' : '30';
-                    const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
+                    const timeKey = getHalfHourKey(recordTime);
                     const dayOfWeek = recordTime.getDay();
 
                     if (timeStr.startsWith(todayDateString)) {
@@ -256,9 +261,8 @@
     function calculatePrediction(nowTime, currentPeople, historyData) {
         if (!nowTime) return;
 
-        const currentHour = nowTime.getHours();
-        const currentMinSlot = nowTime.getMinutes() < 30 ? '00' : '30';
-        const currentKey = `${String(currentHour).padStart(2, '0')}:${currentMinSlot}`;
+        // 正確抓取當下時間對應的半小時 Key (例如 15:56 -> "16:00")
+        const currentKey = getHalfHourKey(nowTime);
 
         const monthDayStr = String(nowTime.getMonth() + 1).padStart(2, '0') + '-' + String(nowTime.getDate()).padStart(2, '0');
         const isHoliday = TAIWAN_HOLIDAYS.includes(monthDayStr);
@@ -267,11 +271,12 @@
         const activeSums = isTodayWeekend ? historyData.weekendSums : historyData.weekdaySums;
         const activeCounts = isTodayWeekend ? historyData.weekendCounts : historyData.weekdayCounts;
 
+        // 當下時段的歷史平均值 (若無紀錄則以當下人數為基準)
         const currentHistAvg = (activeCounts[currentKey] && activeCounts[currentKey] > 0)
             ? (activeSums[currentKey] / activeCounts[currentKey])
             : currentPeople;
 
-        // 💡 平滑差值計算：計算當下與歷史平均的絕對人數差值
+        // 計算當下與歷史同期的差值 (例如今天比平時多 5 人)
         const diff = currentPeople - currentHistAvg;
 
         const factorText = isHoliday ? "🎉 國定假日模式" : "";
@@ -279,14 +284,13 @@
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
 
-        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', diff, activeSums, activeCounts, factorText);
-        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', diff, activeSums, activeCounts, factorText);
+        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', diff, activeSums, activeCounts, factorText, currentPeople);
+        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', diff, activeSums, activeCounts, factorText, currentPeople);
     }
 
-    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, diff, activeSums, activeCounts, factorText) {
+    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, diff, activeSums, activeCounts, factorText, currentPeople) {
         const hour = futureTime.getHours();
-        const minSlot = futureTime.getMinutes() < 30 ? '00' : '30';
-        const key = `${String(hour).padStart(2, '0')}:${minSlot}`;
+        const key = getHalfHourKey(futureTime); // 正確對齊未來時間至半小時 Key
         const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
 
         document.getElementById(timeElemId).innerText = timeFormatted;
@@ -298,13 +302,14 @@
             return;
         }
 
+        // 未來時段的歷史平均人數 (若歷史資料不足，則直接以當前人數為基準)
         const histAvg = (activeCounts[key] && activeCounts[key] > 0)
             ? (activeSums[key] / activeCounts[key])
-            : 20;
+            : currentPeople;
 
-        // 💡 預測人數 = 未來歷史平均 + (當下差值 * 衰減係數 0.7)
-        let predPeople = Math.round(histAvg + (diff * 0.7));
-        predPeople = Math.max(0, Math.min(CAPACITY, predPeople));
+        // 💡 平滑加權公式：未來的歷史平均 + (當下偏差差值 * 0.6 衰減率)
+        let predPeople = Math.round(histAvg + (diff * 0.6));
+        predPeople = Math.max(0, Math.min(CAPACITY, predPeople)); // 嚴格限制在 0 ~ 70 人
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
