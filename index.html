@@ -1,518 +1,513 @@
-<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>鼓山運動中心 - 健身房人流分析</title>
-    
-    <!-- PWA 支援設定 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0cb4b5">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- 引入 Chart.js 圖表套件與 Annotation 背景標註套件 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        
-        /* 實時狀態大字報設計 */
-        .live-status { text-align: center; padding: 30px; background: #fff; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #0cb4b5; }
-        .live-title { font-size: 1.2rem; color: #777; margin: 0 0 10px 0; font-weight: bold; }
-        .live-numbers { font-size: 4rem; font-weight: bold; color: #333; margin: 0; }
-        .live-percentage { font-size: 2rem; color: #888; font-weight: normal; }
-        .text-danger { color: #e74c3c !important; }
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,
+initial-scale=1.0">
+<title>鼓山運動中心 - 健身房人流分析</title>
+<!-- PWA 支援設定 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0cb4b5">
+<link rel="apple-touch-icon"
+href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style"
+content="black-translucent">
+<!-- 引入 Chart.js 圖表套件與 Annotation 背景標註套件 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+.container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 
-        /* 未來一小時預測區塊樣式 */
-        .prediction-box { display: flex; justify-content: space-around; background: #f8fafc; padding: 18px; border-radius: 10px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
-        .prediction-item { text-align: center; flex: 1; border-right: 1px solid #e2e8f0; }
-        .prediction-item:last-child { border-right: none; }
-        .pred-time { font-size: 0.95rem; color: #64748b; font-weight: bold; margin-bottom: 5px; }
-        .pred-status { font-size: 1.25rem; font-weight: bold; color: #1e293b; }
-        .pred-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.9rem; color: #fff; margin-top: 5px; }
-        .pred-factors { font-size: 0.8rem; color: #0cb4b5; margin-top: 4px; font-weight: 500; }
-        .bg-green { background-color: #2eb85c; }
-        .bg-yellow { background-color: #f9b115; color: #333; }
-        .bg-red { background-color: #e55353; }
+/* 實時狀態大字報設計 */
+.live-status { text-align: center; padding: 30px; background: #fff; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #0cb4b5; }
+.live-title { font-size: 1.2rem; color: #777; margin: 0 0 10px 0; font-weight: bold; }
+.live-numbers { font-size: 4rem; font-weight: bold; color: #333; margin: 0; }
+.live-percentage { font-size: 2rem; color: #888; font-weight: normal; }
+.text-danger { color: #e74c3c !important; }
 
-        h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; }
-        .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
+/* 未來一小時預測區塊樣式 */
+.prediction-box { display: flex; justify-content: space-around; background: #f8fafc; padding: 18px; border-radius: 10px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
+.prediction-item { text-align: center; flex: 1; border-right: 1px solid #e2e8f0; }
+.prediction-item:last-child { border-right: none; }
+.pred-time { font-size: 0.95rem; color: #64748b; font-weight: bold; margin-bottom: 5px; }
+.pred-status { font-size: 1.25rem; font-weight: bold; color: #1e293b; }
+.pred-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.9rem; color: #fff; margin-top: 5px; }
+.pred-factors { font-size: 0.8rem; color: #0cb4b5; margin-top: 4px; font-weight: 500; }
+.bg-green { background-color: #2eb85c; }
+.bg-yellow { background-color: #f9b115; color: #333; }
+.bg-red { background-color: #e55353; }
 
-        .scrollable-chart-wrapper {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-bottom: 40px;
-        }
-        .scrollable-chart-inner {
-            position: relative;
-            height: 45vh;
-            min-width: 700px; 
-        }
-    </style>
+h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; }
+.chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
+
+.scrollable-chart-wrapper {
+width: 100%;
+overflow-x: auto;
+-webkit-overflow-scrolling: touch;
+margin-bottom: 40px;
+}
+.scrollable-chart-inner {
+position: relative;
+height: 45vh;
+min-width: 700px;
+}
+</style>
 </head>
 <body>
-
 <div class="container">
-    <!-- 實時狀態大字報 -->
-    <div class="live-status">
-        <p class="live-title">🏃‍♂️ 健身房 現在人數 / 容留人數</p>
-        <p class="live-numbers">
-            <span id="currentPeople">--</span> / 70 
-            <span class="live-percentage" id="currentPercent">( --% )</span>
-        </p>
-    </div>
-
-    <!-- 未來一小時擁擠度預測卡片 -->
-    <div class="prediction-box">
-        <div class="prediction-item">
-            <div class="pred-time">🔮 預測 30 分鐘後 (<span id="pred30Time">--:--</span>)</div>
-            <div class="pred-status" id="pred30Text">計算中...</div>
-            <div id="pred30Badge" class="pred-badge" style="display:none;">--</div>
-            <div id="pred30Factor" class="pred-factors"></div>
-        </div>
-        <div class="prediction-item">
-            <div class="pred-time">🔮 預測 60 分鐘後 (<span id="pred60Time">--:--</span>)</div>
-            <div class="pred-status" id="pred60Text">計算中...</div>
-            <div id="pred60Badge" class="pred-badge" style="display:none;">--</div>
-            <div id="pred60Factor" class="pred-factors"></div>
-        </div>
-    </div>
-
-    <h2>📈 今日人數趨勢 (每半小時平均)</h2>
-    <div class="scrollable-chart-wrapper" id="todayChartWrapper">
-        <div class="scrollable-chart-inner">
-            <canvas id="todayChart"></canvas>
-        </div>
-    </div>
-
-    <h2>📊 過去一個月：週一至週日 平均人數</h2>
-    <div class="chart-container">
-        <canvas id="dayChart"></canvas>
-    </div>
-
-    <h2>⏰ 過去一個月：營業時段 平均人數</h2>
-    <div class="chart-container">
-        <canvas id="hourChart"></canvas>
-    </div>
+<!-- 實時狀態大字報 -->
+<div class="live-status">
+<p class="live-title" align="center">🏃‍♂️ <font face="微軟正黑體"><strong><font
+size="+2" color="#000000">健身房 現在人數 / 容留人數</font></strong></font></p>
+<p class="live-numbers" align="center"> <font color="#000000"><span
+id="currentPeople">--</span></font> / <font
+color="#666666">70</font> <span class="live-percentage"
+id="currentPercent">( --% )</span> </p>
 </div>
-
+<!-- 未來一小時擁擠度預測卡片 -->
+<div class="prediction-box">
+<div class="prediction-item">
+<div class="pred-time"><font size="+1">🔮</font> <font
+size="+1">預測 30 分鐘後 (<span id="pred30Time">--:--</span>)</font></div>
+<div class="pred-status" id="pred30Text"><font size="+2">計算
+中...</font></div>
+<div id="pred30Badge" class="pred-badge" style="display:none;">--</div>
+<div id="pred30Factor" class="pred-factors"></div>
+</div>
+<div class="prediction-item">
+<div class="pred-time"><font size="+1">🔮</font> <font
+size="+1">預測 60 分鐘後 (<span id="pred60Time">--:--</span>)</font></div>
+<div class="pred-status" id="pred60Text"><font size="+2">計算
+中...</font></div>
+<div id="pred60Badge" class="pred-badge" style="display:none;">--</div>
+<div id="pred60Factor" class="pred-factors"></div>
+</div>
+</div>
+<h2><font face="微軟正黑體">今日半小時平均人流</font></h2>
+<div class="scrollable-chart-wrapper" id="todayChartWrapper">
+<div class="scrollable-chart-inner"> <canvas id="todayChart"></canvas>
+</div>
+</div>
+<h2><font face="微軟正黑體">近 30 日每週各日平均人流</font></h2>
+<div class="chart-container"> <canvas id="dayChart"></canvas> </div>
+<h2><font face="微軟正黑體">近 30 日分時平均人流</font></h2>
+<div class="chart-container"> <canvas id="hourChart"></canvas> </div>
+</div>
 <script>
-    let todayChartInstance = null;
-    let dayChartInstance = null;
-    let hourChartInstance = null;
+let todayChartInstance = null;
+let dayChartInstance = null;
+let hourChartInstance = null;
 
-    const CAPACITY = 70; // 設定容留上限
+const CAPACITY = 70; // 設定容留上限
 
-    const tooltipFontConfig = {
-        titleFont: { size: 16, weight: 'bold' },
-        bodyFont: { size: 16 },
-        padding: 10
-    };
+const tooltipFontConfig = {
+titleFont: { size: 16, weight: 'bold' },
+bodyFont: { size: 16 },
+padding: 10
+};
 
-    // 國定假日判定清單 (格式: MM-DD)
-    const TAIWAN_HOLIDAYS = [
-        "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
-    ];
+// 國定假日判定清單 (格式: MM-DD)
+const TAIWAN_HOLIDAYS = [
+"01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
+];
 
-    function getBarColors(dataArray) {
-        const validData = dataArray.filter(v => v > 0); 
-        const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
-        const minVal = validData.length > 0 ? Math.min(...validData) : 0;
+function getBarColors(dataArray) {
+const validData = dataArray.filter(v => v > 0);
+const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
+const minVal = validData.length > 0 ? Math.min(...validData) : 0;
 
-        return dataArray.map(val => {
-            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.8)'; 
-            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.8)';  
-            return 'rgba(200, 200, 200, 0.5)';                                
-        });
-    }
+return dataArray.map(val => {
+if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.8)';
+if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.8)';
+return 'rgba(200, 200, 200, 0.5)';
+});
+}
 
-    function getCrowdednessStatus(people) {
-        if (people <= 25) return { text: '舒適', class: 'bg-green' };
-        if (people <= 50) return { text: '適中', class: 'bg-yellow' };
-        return { text: '擁擠', class: 'bg-red' };
-    }
+function getCrowdednessStatus(people) {
+if (people <= 25) return { text: '舒適', class: 'bg-green' };
+if (people <= 50) return { text: '適中', class: 'bg-yellow' };
+return { text: '擁擠', class: 'bg-red' };
+}
 
-    // 將 Date 物件精準對齊至半小時 Key (例如 16:25 -> "16:30")
-    function getHalfHourKey(dateObj) {
-        const h = dateObj.getHours();
-        const m = dateObj.getMinutes();
-        const slot = m < 30 ? '00' : '30';
-        return `${String(h).padStart(2, '0')}:${slot}`;
-    }
+// 將 Date 物件精準對齊至半小時 Key (例如 16:25 -> "16:30")
+function getHalfHourKey(dateObj) {
+const h = dateObj.getHours();
+const m = dateObj.getMinutes();
+const slot = m < 30 ? '00' : '30';
+return `${String(h).padStart(2, '0')}:${slot}`;
+}
 
-    async function fetchAndProcessData() {
-        const cacheBuster = new Date().getTime();
-        const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
-        const textData = await response.text();
-        const rows = textData.trim().split('\n').slice(1);
-        
-        const now = new Date();
-        const todayDateString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(now.getMonth() - 1);
+async function fetchAndProcessData() {
+const cacheBuster = new Date().getTime();
+const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
+const textData = await response.text();
+const rows = textData.trim().split('\n').slice(1);
 
-        let latestPeople = '--';
-        let latestRecordTime = null;
-        let todayHalfHourMap = {};
+const now = new Date();
+const todayDateString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 
-        let daySums = Array(7).fill(0);
-        let dayCounts = Array(7).fill(0);
-        let hourSums = Array(24).fill(0);
-        let hourCounts = Array(24).fill(0);
+const oneMonthAgo = new Date();
+oneMonthAgo.setMonth(now.getMonth() - 1);
 
-        let historyWeekdaySums = {}, historyWeekdayCounts = {};
-        let historyWeekendSums = {}, historyWeekendCounts = {};
+let latestPeople = '--';
+let latestRecordTime = null;
+let todayHalfHourMap = {};
 
-        rows.forEach(row => {
-            const cols = row.split(',');
-            if (cols.length === 2) {
-                const timeStr = cols[0];
-                const recordTime = new Date(timeStr.replace(/-/g, '/'));
-                let people = parseInt(cols[1]);
+let daySums = Array(7).fill(0);
+let dayCounts = Array(7).fill(0);
+let hourSums = Array(24).fill(0);
+let hourCounts = Array(24).fill(0);
 
-                if (!isNaN(people)) {
-                    latestPeople = people;
-                    latestRecordTime = recordTime;
+let historyWeekdaySums = {}, historyWeekdayCounts = {};
+let historyWeekendSums = {}, historyWeekendCounts = {};
 
-                    // 💡 過濾舊測試資料的破百異常數值
-                    const validPeople = Math.min(CAPACITY, people);
+rows.forEach(row => {
+const cols = row.split(',');
+if (cols.length === 2) {
+const timeStr = cols[0];
+const recordTime = new Date(timeStr.replace(/-/g, '/'));
+let people = parseInt(cols[1]);
 
-                    const hour = recordTime.getHours();
-                    const timeKey = getHalfHourKey(recordTime);
-                    const dayOfWeek = recordTime.getDay();
+if (!isNaN(people)) {
+latestPeople = people;
+latestRecordTime = recordTime;
 
-                    if (timeStr.startsWith(todayDateString)) {
-                        if (hour >= 6 && hour <= 22) {
-                            if (!todayHalfHourMap[timeKey]) {
-                                todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
-                            }
-                            todayHalfHourMap[timeKey].sum += validPeople;
-                            todayHalfHourMap[timeKey].count += 1;
-                        }
-                    }
+// 💡 過濾舊測試資料的破百異常數值
+const validPeople = Math.min(CAPACITY, people);
 
-                    if (recordTime >= oneMonthAgo) {
-                        daySums[dayOfWeek] += validPeople;
-                        dayCounts[dayOfWeek]++;
+const hour = recordTime.getHours();
+const timeKey = getHalfHourKey(recordTime);
+const dayOfWeek = recordTime.getDay();
 
-                        hourSums[hour] += validPeople;
-                        hourCounts[hour]++;
+if (timeStr.startsWith(todayDateString)) {
+if (hour >= 6 && hour <= 22) {
+if (!todayHalfHourMap[timeKey]) {
+todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
+}
+todayHalfHourMap[timeKey].sum += validPeople;
+todayHalfHourMap[timeKey].count += 1;
+}
+}
 
-                        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-                        if (isWeekend) {
-                            if (!historyWeekendSums[timeKey]) {
-                                historyWeekendSums[timeKey] = 0;
-                                historyWeekendCounts[timeKey] = 0;
-                            }
-                            historyWeekendSums[timeKey] += validPeople;
-                            historyWeekendCounts[timeKey] += 1;
-                        } else {
-                            if (!historyWeekdaySums[timeKey]) {
-                                historyWeekdaySums[timeKey] = 0;
-                                historyWeekdayCounts[timeKey] = 0;
-                            }
-                            historyWeekdaySums[timeKey] += validPeople;
-                            historyWeekdayCounts[timeKey] += 1;
-                        }
-                    }
-                }
-            }
-        });
+if (recordTime >= oneMonthAgo) {
+daySums[dayOfWeek] += validPeople;
+dayCounts[dayOfWeek]++;
 
-        const sortedKeys = Object.keys(todayHalfHourMap).sort();
-        const todayLabels = sortedKeys;
-        const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
+hourSums[hour] += validPeople;
+hourCounts[hour]++;
 
-        if (latestPeople !== '--') {
-            document.getElementById('currentPeople').innerText = latestPeople;
-            let percent = Math.round((latestPeople / CAPACITY) * 100);
-            const percentElement = document.getElementById('currentPercent');
-            percentElement.innerText = `(${percent}%)`;
-            
-            if (percent >= 100) {
-                document.getElementById('currentPeople').classList.add('text-danger');
-                percentElement.classList.add('text-danger');
-            } else {
-                document.getElementById('currentPeople').classList.remove('text-danger');
-                percentElement.classList.remove('text-danger');
-            }
+const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+if (isWeekend) {
+if (!historyWeekendSums[timeKey]) {
+historyWeekendSums[timeKey] = 0;
+historyWeekendCounts[timeKey] = 0;
+}
+historyWeekendSums[timeKey] += validPeople;
+historyWeekendCounts[timeKey] += 1;
+} else {
+if (!historyWeekdaySums[timeKey]) {
+historyWeekdaySums[timeKey] = 0;
+historyWeekdayCounts[timeKey] = 0;
+}
+historyWeekdaySums[timeKey] += validPeople;
+historyWeekdayCounts[timeKey] += 1;
+}
+}
+}
+}
+});
 
-            calculatePrediction(latestRecordTime, latestPeople, {
-                weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
-                weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
-            });
-        }
+const sortedKeys = Object.keys(todayHalfHourMap).sort();
+const todayLabels = sortedKeys;
+const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
-        const dayOrder = [1, 2, 3, 4, 5, 6, 0];
-        const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
-        const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
+if (latestPeople !== '--') {
+document.getElementById('currentPeople').innerText = latestPeople;
+let percent = Math.round((latestPeople / CAPACITY) * 100);
+const percentElement = document.getElementById('currentPercent');
+percentElement.innerText = `(${percent}%)`;
 
-        const hourLabels = [];
-        const hourAvgs = [];
-        for (let i = 6; i <= 22; i++) {
-            hourLabels.push(i.toString().padStart(2, '0') + ':00');
-            hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
-        }
+if (percent >= 100) {
+document.getElementById('currentPeople').classList.add('text-danger');
+percentElement.classList.add('text-danger');
+} else {
+document.getElementById('currentPeople').classList.remove('text-danger');
+percentElement.classList.remove('text-danger');
+}
 
-        return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
-    }
+calculatePrediction(latestRecordTime, latestPeople, {
+weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
+weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
+});
+}
 
-    function calculatePrediction(nowTime, currentPeople, historyData) {
-        if (!nowTime) return;
+const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
 
-        const monthDayStr = String(nowTime.getMonth() + 1).padStart(2, '0') + '-' + String(nowTime.getDate()).padStart(2, '0');
-        const isHoliday = TAIWAN_HOLIDAYS.includes(monthDayStr);
-        const isTodayWeekend = (nowTime.getDay() === 0 || nowTime.getDay() === 6) || isHoliday;
+const hourLabels = [];
+const hourAvgs = [];
+for (let i = 6; i <= 22; i++) {
+hourLabels.push(i.toString().padStart(2, '0') + ':00');
+hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
+}
 
-        const activeSums = isTodayWeekend ? historyData.weekendSums : historyData.weekdaySums;
-        const activeCounts = isTodayWeekend ? historyData.weekendCounts : historyData.weekdayCounts;
+return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
+}
 
-        const currentKey = getHalfHourKey(nowTime);
-        const currentHistAvg = (activeCounts[currentKey] && activeCounts[currentKey] > 0)
-            ? (activeSums[currentKey] / activeCounts[currentKey])
-            : currentPeople;
+function calculatePrediction(nowTime, currentPeople, historyData) {
+if (!nowTime) return;
 
-        const factorText = isHoliday ? "🎉 國定假日模式" : "";
+const monthDayStr = String(nowTime.getMonth() + 1).padStart(2, '0') + '-' + String(nowTime.getDate()).padStart(2, '0');
+const isHoliday = TAIWAN_HOLIDAYS.includes(monthDayStr);
+const isTodayWeekend = (nowTime.getDay() === 0 || nowTime.getDay() === 6) || isHoliday;
 
-        // 1. 計算 30 分鐘後預測人數
-        const time30 = new Date(nowTime.getTime() + 30 * 60000);
-        const pred30People = getSmoothedPred(time30, activeSums, activeCounts, currentHistAvg, currentPeople);
+const activeSums = isTodayWeekend ? historyData.weekendSums : historyData.weekdaySums;
+const activeCounts = isTodayWeekend ? historyData.weekendCounts : historyData.weekdayCounts;
 
-        // 2. 計算 60 分鐘後預測人數 (以 30 分鐘預估值作二次平滑，避免劇烈震盪)
-        const time60 = new Date(nowTime.getTime() + 60 * 60000);
-        const pred60People = getSmoothedPred(time60, activeSums, activeCounts, currentHistAvg, pred30People);
+const currentKey = getHalfHourKey(nowTime);
+const currentHistAvg = (activeCounts[currentKey] && activeCounts[currentKey] > 0)
+? (activeSums[currentKey] / activeCounts[currentKey])
+: currentPeople;
 
-        // 繪製 UI
-        renderPredUI(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', pred30People, factorText);
-        renderPredUI(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', pred60People, factorText);
-    }
+const factorText = isHoliday ? "🎉 國定假日模式" : "";
 
-    function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
-        const hour = targetTime.getHours();
-        if (hour < 6 || hour > 22) return -1; // 已打烊
+// 1. 計算 30 分鐘後預測人數
+const time30 = new Date(nowTime.getTime() + 30 * 60000);
+const pred30People = getSmoothedPred(time30, activeSums, activeCounts, currentHistAvg, currentPeople);
 
-        const key = getHalfHourKey(targetTime);
-        const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
-            ? (activeSums[key] / activeCounts[key])
-            : basePeople;
+// 2. 計算 60 分鐘後預測人數 (以 30 分鐘預估值作二次平滑，避免劇烈震盪)
+const time60 = new Date(nowTime.getTime() + 60 * 60000);
+const pred60People = getSmoothedPred(time60, activeSums, activeCounts, currentHistAvg, pred30People);
 
-        const trendDelta = futureHistAvg - baseHistAvg;
-        
-        // 💡 0.4 平滑指數：限制半小時內最大的人數變化幅度
-        let pred = Math.round(basePeople + (trendDelta * 0.4));
-        return Math.max(0, Math.min(CAPACITY, pred));
-    }
+// 繪製 UI
+renderPredUI(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', pred30People, factorText);
+renderPredUI(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', pred60People, factorText);
+}
 
-    function renderPredUI(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, predPeople, factorText) {
-        const hour = futureTime.getHours();
-        const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
+function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
+const hour = targetTime.getHours();
+if (hour < 6 || hour > 22) return -1; // 已打烊
 
-        document.getElementById(timeElemId).innerText = timeFormatted;
+const key = getHalfHourKey(targetTime);
+const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
+? (activeSums[key] / activeCounts[key])
+: basePeople;
 
-        if (predPeople === -1) {
-            document.getElementById(textElemId).innerText = '已打烊';
-            document.getElementById(badgeElemId).style.display = 'none';
-            document.getElementById(factorElemId).innerText = '';
-            return;
-        }
+const trendDelta = futureHistAvg - baseHistAvg;
 
-        const statusInfo = getCrowdednessStatus(predPeople);
+// 💡 0.4 平滑指數：限制半小時內最大的人數變化幅度
+let pred = Math.round(basePeople + (trendDelta * 0.4));
+return Math.max(0, Math.min(CAPACITY, pred));
+}
 
-        document.getElementById(textElemId).innerText = `約 ${predPeople} 人`;
-        
-        const badgeElem = document.getElementById(badgeElemId);
-        badgeElem.innerText = statusInfo.text;
-        badgeElem.className = `pred-badge ${statusInfo.class}`;
-        badgeElem.style.display = 'inline-block';
+function renderPredUI(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, predPeople, factorText) {
+const hour = futureTime.getHours();
+const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
 
-        document.getElementById(factorElemId).innerText = factorText;
-    }
+document.getElementById(timeElemId).innerText = timeFormatted;
 
-    async function renderCharts() {
-        const data = await fetchAndProcessData();
+if (predPeople === -1) {
+document.getElementById(textElemId).innerText = '已打烊';
+document.getElementById(badgeElemId).style.display = 'none';
+document.getElementById(factorElemId).innerText = '';
+return;
+}
 
-        let maxLabel = null, maxVal = -1;
-        let minLabel = null, minVal = Infinity;
+const statusInfo = getCrowdednessStatus(predPeople);
 
-        if (data.todayData.length > 0) {
-            data.todayData.forEach((val, idx) => {
-                if (val > maxVal) { maxVal = val; maxLabel = data.todayLabels[idx]; }
-                if (val < minVal) { minVal = val; minLabel = data.todayLabels[idx]; }
-            });
-        }
+document.getElementById(textElemId).innerText = `約 ${predPeople} 人`;
 
-        let annotationsConfig = {
-            comfortZone: {
-                type: 'box', yMin: 0, yMax: 25,
-                backgroundColor: 'rgba(143, 206, 0, 0.12)', borderWidth: 0,
-                label: { display: true, content: '綠色：舒適 (0-25人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(100, 140, 0, 0.8)' }
-            },
-            moderateZone: {
-                type: 'box', yMin: 25, yMax: 50,
-                backgroundColor: 'rgba(255, 193, 7, 0.12)', borderWidth: 0,
-                label: { display: true, content: '黃色：適中 (25-50人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(180, 130, 0, 0.8)' }
-            },
-            crowdedZone: {
-                type: 'box', yMin: 50, yMax: CAPACITY,
-                backgroundColor: 'rgba(255, 77, 77, 0.12)', borderWidth: 0,
-                label: { display: true, content: '紅色：擁擠 (50-70人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(200, 50, 50, 0.8)' }
-            }
-        };
+const badgeElem = document.getElementById(badgeElemId);
+badgeElem.innerText = statusInfo.text;
+badgeElem.className = `pred-badge ${statusInfo.class}`;
+badgeElem.style.display = 'inline-block';
 
-        if (maxLabel !== null) {
-            annotationsConfig.maxPoint = {
-                type: 'point', xValue: maxLabel, yValue: maxVal,
-                backgroundColor: 'rgba(231, 76, 60, 1)', radius: 6
-            };
-            annotationsConfig.maxLabel = {
-                type: 'label', xValue: maxLabel, yValue: maxVal,
-                yAdjust: -16,
-                backgroundColor: 'rgba(231, 76, 60, 0.85)',
-                content: `最高 ${maxVal}人`,
-                color: '#fff', font: { size: 11, weight: 'bold' },
-                padding: 4, borderRadius: 4
-            };
-        }
+document.getElementById(factorElemId).innerText = factorText;
+}
 
-        if (minLabel !== null && minLabel !== maxLabel) {
-            annotationsConfig.minPoint = {
-                type: 'point', xValue: minLabel, yValue: minVal,
-                backgroundColor: 'rgba(46, 184, 92, 1)', radius: 6
-            };
-            annotationsConfig.minLabel = {
-                type: 'label', xValue: minLabel, yValue: minVal,
-                yAdjust: 16,
-                backgroundColor: 'rgba(46, 184, 92, 0.85)',
-                content: `最低 ${minVal}人`,
-                color: '#fff', font: { size: 11, weight: 'bold' },
-                padding: 4, borderRadius: 4
-            };
-        }
+async function renderCharts() {
+const data = await fetchAndProcessData();
 
-        if (todayChartInstance) todayChartInstance.destroy();
-        const ctxToday = document.getElementById('todayChart').getContext('2d');
-        todayChartInstance = new Chart(ctxToday, {
-            type: 'line',
-            data: {
-                labels: data.todayLabels,
-                datasets: [{
-                    label: '今日每半小時平均人數',
-                    data: data.todayData,
-                    borderColor: 'rgba(12, 180, 181, 1)',
-                    backgroundColor: 'rgba(12, 180, 181, 0.2)',
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    fill: false,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 0 },
-                plugins: {
-                    tooltip: tooltipFontConfig,
-                    annotation: { annotations: annotationsConfig }
-                },
-                scales: { 
-                    x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
-                    y: { 
-                        ticks: { font: { size: 14, weight: 'bold' } }, 
-                        beginAtZero: true, 
-                        max: CAPACITY,
-                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
-                    } 
-                }
-            }
-        });
+let maxLabel = null, maxVal = -1;
+let minLabel = null, minVal = Infinity;
 
-        const wrapper = document.getElementById('todayChartWrapper');
-        wrapper.scrollLeft = wrapper.scrollWidth;
+if (data.todayData.length > 0) {
+data.todayData.forEach((val, idx) => {
+if (val > maxVal) { maxVal = val; maxLabel = data.todayLabels[idx]; }
+if (val < minVal) { minVal = val; minLabel = data.todayLabels[idx]; }
+});
+}
 
-        if (dayChartInstance) dayChartInstance.destroy();
-        const ctxDay = document.getElementById('dayChart').getContext('2d');
-        dayChartInstance = new Chart(ctxDay, {
-            type: 'bar',
-            data: {
-                labels: data.dayLabels,
-                datasets: [{
-                    label: '平均人數',
-                    data: data.dayAvgs,
-                    backgroundColor: getBarColors(data.dayAvgs),
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 0 },
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: tooltipFontConfig
-                }, 
-                scales: { 
-                    x: { ticks: { font: { size: 14, weight: 'bold' } } },
-                    y: { 
-                        ticks: { font: { size: 14, weight: 'bold' } }, 
-                        beginAtZero: true, 
-                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
-                    } 
-                }
-            }
-        });
+let annotationsConfig = {
+comfortZone: {
+type: 'box', yMin: 0, yMax: 25,
+backgroundColor: 'rgba(143, 206, 0, 0.12)', borderWidth: 0,
+label: { display: true, content: '綠色：舒適 (0-25人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(100, 140, 0, 0.8)' }
+},
+moderateZone: {
+type: 'box', yMin: 25, yMax: 50,
+backgroundColor: 'rgba(255, 193, 7, 0.12)', borderWidth: 0,
+label: { display: true, content: '黃色：適中 (25-50人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(180, 130, 0, 0.8)' }
+},
+crowdedZone: {
+type: 'box', yMin: 50, yMax: CAPACITY,
+backgroundColor: 'rgba(255, 77, 77, 0.12)', borderWidth: 0,
+label: { display: true, content: '紅色：擁擠 (50-70人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(200, 50, 50, 0.8)' }
+}
+};
 
-        if (hourChartInstance) hourChartInstance.destroy();
-        const ctxHour = document.getElementById('hourChart').getContext('2d');
-        hourChartInstance = new Chart(ctxHour, {
-            type: 'bar',
-            data: {
-                labels: data.hourLabels,
-                datasets: [{
-                    label: '平均人數',
-                    data: data.hourAvgs,
-                    backgroundColor: getBarColors(data.hourAvgs),
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 0 },
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: tooltipFontConfig
-                },
-                scales: { 
-                    x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
-                    y: { 
-                        ticks: { font: { size: 14, weight: 'bold' } }, 
-                        beginAtZero: true, 
-                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
-                    } 
-                }
-            }
-        });
+if (maxLabel !== null) {
+annotationsConfig.maxPoint = {
+type: 'point', xValue: maxLabel, yValue: maxVal,
+backgroundColor: 'rgba(231, 76, 60, 1)', radius: 6
+};
+annotationsConfig.maxLabel = {
+type: 'label', xValue: maxLabel, yValue: maxVal,
+yAdjust: -16,
+backgroundColor: 'rgba(231, 76, 60, 0.85)',
+content: `最高 ${maxVal}人`,
+color: '#fff', font: { size: 11, weight: 'bold' },
+padding: 4, borderRadius: 4
+};
+}
 
-        console.log(`圖表已於 ${new Date().toLocaleTimeString()} 重新計算並更新`);
-    }
+if (minLabel !== null && minLabel !== maxLabel) {
+annotationsConfig.minPoint = {
+type: 'point', xValue: minLabel, yValue: minVal,
+backgroundColor: 'rgba(46, 184, 92, 1)', radius: 6
+};
+annotationsConfig.minLabel = {
+type: 'label', xValue: minLabel, yValue: minVal,
+yAdjust: 16,
+backgroundColor: 'rgba(46, 184, 92, 0.85)',
+content: `最低 ${minVal}人`,
+color: '#fff', font: { size: 11, weight: 'bold' },
+padding: 4, borderRadius: 4
+};
+}
 
-    renderCharts();
-    setInterval(renderCharts, 300000); 
+if (todayChartInstance) todayChartInstance.destroy();
+const ctxToday = document.getElementById('todayChart').getContext('2d');
+todayChartInstance = new Chart(ctxToday, {
+type: 'line',
+data: {
+labels: data.todayLabels,
+datasets: [{
+label: '今日每半小時平均人數',
+data: data.todayData,
+borderColor: 'rgba(12, 180, 181, 1)',
+backgroundColor: 'rgba(12, 180, 181, 0.2)',
+borderWidth: 3,
+pointRadius: 4,
+fill: false,
+tension: 0.3
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+animation: { duration: 0 },
+plugins: {
+tooltip: tooltipFontConfig,
+annotation: { annotations: annotationsConfig }
+},
+scales: {
+x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+y: {
+ticks: { font: { size: 14, weight: 'bold' } },
+beginAtZero: true,
+max: CAPACITY,
+title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } }
+}
+}
+}
+});
 
-    // 註冊 PWA Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
-                .catch(err => console.log('Service Worker 註冊失敗:', err));
-        });
-    }
+const wrapper = document.getElementById('todayChartWrapper');
+wrapper.scrollLeft = wrapper.scrollWidth;
+
+if (dayChartInstance) dayChartInstance.destroy();
+const ctxDay = document.getElementById('dayChart').getContext('2d');
+dayChartInstance = new Chart(ctxDay, {
+type: 'bar',
+data: {
+labels: data.dayLabels,
+datasets: [{
+label: '平均人數',
+data: data.dayAvgs,
+backgroundColor: getBarColors(data.dayAvgs),
+borderRadius: 5
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+animation: { duration: 0 },
+plugins: {
+legend: { display: false },
+tooltip: tooltipFontConfig
+},
+scales: {
+x: { ticks: { font: { size: 14, weight: 'bold' } } },
+y: {
+ticks: { font: { size: 14, weight: 'bold' } },
+beginAtZero: true,
+title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } }
+}
+}
+}
+});
+
+if (hourChartInstance) hourChartInstance.destroy();
+const ctxHour = document.getElementById('hourChart').getContext('2d');
+hourChartInstance = new Chart(ctxHour, {
+type: 'bar',
+data: {
+labels: data.hourLabels,
+datasets: [{
+label: '平均人數',
+data: data.hourAvgs,
+backgroundColor: getBarColors(data.hourAvgs),
+borderRadius: 5
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+animation: { duration: 0 },
+plugins: {
+legend: { display: false },
+tooltip: tooltipFontConfig
+},
+scales: {
+x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+y: {
+ticks: { font: { size: 14, weight: 'bold' } },
+beginAtZero: true,
+title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } }
+}
+}
+}
+});
+
+console.log(`圖表已於 ${new Date().toLocaleTimeString()} 重新計算並更新`);
+}
+
+renderCharts();
+setInterval(renderCharts, 300000);
+
+// 註冊 PWA Service Worker
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('./sw.js')
+.then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+.catch(err => console.log('Service Worker 註冊失敗:', err));
+});
+}
 </script>
-
 </body>
 </html>
