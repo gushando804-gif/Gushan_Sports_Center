@@ -113,6 +113,7 @@
         padding: 10
     };
 
+    // 國定假日判定清單 (格式: MM-DD)
     const TAIWAN_HOLIDAYS = [
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
@@ -133,21 +134,6 @@
         if (people <= 25) return { text: '舒適', class: 'bg-green' };
         if (people <= 50) return { text: '適中', class: 'bg-yellow' };
         return { text: '擁擠', class: 'bg-red' };
-    }
-
-    async function getWeatherWeight() {
-        try {
-            const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=22.65&longitude=120.28&current_weather=true");
-            const data = await res.json();
-            const weatherCode = data.current_weather.weathercode;
-            
-            if ((weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 99)) {
-                return { weight: 1.20, desc: "🌧️ 雨天加權 (+20%)" };
-            }
-        } catch (e) {
-            console.log("天氣資訊取得失敗，採用預設權重");
-        }
-        return { weight: 1.0, desc: "" };
     }
 
     async function fetchAndProcessData() {
@@ -247,11 +233,10 @@
                 percentElement.classList.remove('text-danger');
             }
 
-            const weatherInfo = await getWeatherWeight();
             calculatePrediction(latestRecordTime, latestPeople, {
                 weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
                 weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
-            }, weatherInfo);
+            });
         }
 
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
@@ -268,7 +253,7 @@
         return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
     }
 
-    function calculatePrediction(nowTime, currentPeople, historyData, weatherInfo) {
+    function calculatePrediction(nowTime, currentPeople, historyData) {
         if (!nowTime) return;
 
         const currentHour = nowTime.getHours();
@@ -286,12 +271,10 @@
             ? (activeSums[currentKey] / activeCounts[currentKey])
             : currentPeople;
 
-        const ratio = (currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1) * weatherInfo.weight;
+        // 計算純歷史偏差比率（不再乘天氣加權）
+        const ratio = currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1;
 
-        let factorDesc = [];
-        if (isHoliday) factorDesc.push("🎉 國定假日模式");
-        if (weatherInfo.desc) factorDesc.push(weatherInfo.desc);
-        const factorText = factorDesc.join(" | ");
+        const factorText = isHoliday ? "🎉 國定假日模式" : "";
 
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
@@ -505,7 +488,7 @@
     renderCharts();
     setInterval(renderCharts, 300000); 
 
-    // 💡 註冊 PWA Service Worker
+    // 註冊 PWA Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
