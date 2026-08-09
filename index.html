@@ -122,17 +122,21 @@
                     latestPeople = people;
 
                     if (timeStr.startsWith(todayDateString)) {
-                        const hour = recordTime.getHours();
-                        const minute = recordTime.getMinutes();
-                        const halfHourSlot = minute < 30 ? '00' : '30';
-                        const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
+                       const hour = recordTime.getHours();
+    
+                      // 💡 只處理營業時間內 (06:00 ~ 22:59) 的紀錄，自動剔除 06:00 以前的資料
+                      if (hour >= 6 && hour <= 22) {
+                      const minute = recordTime.getMinutes();
+                      const halfHourSlot = minute < 30 ? '00' : '30';
+                      const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
 
-                        if (!todayHalfHourMap[timeKey]) {
-                            todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
-                        }
-                        todayHalfHourMap[timeKey].sum += people;
-                        todayHalfHourMap[timeKey].count += 1;
+                      if (!todayHalfHourMap[timeKey]) {
+                      todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
+                      }
+                      todayHalfHourMap[timeKey].sum += people;
+                      todayHalfHourMap[timeKey].count += 1;
                     }
+                }
 
                     if (recordTime >= oneMonthAgo) {
                         const day = recordTime.getDay();
