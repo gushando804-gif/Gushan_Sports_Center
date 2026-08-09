@@ -142,7 +142,6 @@
         let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
 
-        // 歷史同期（每 30 分鐘）統計數據
         let historyHalfHourSums = {};
         let historyHalfHourCounts = {};
 
@@ -162,7 +161,7 @@
                     const halfHourSlot = minute < 30 ? '00' : '30';
                     const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
 
-                    // 今日數據
+                    // 今日數據 (限定 06:00~22:59)
                     if (timeStr.startsWith(todayDateString)) {
                         if (hour >= 6 && hour <= 22) {
                             if (!todayHalfHourMap[timeKey]) {
@@ -197,7 +196,6 @@
         const todayLabels = sortedKeys;
         const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
-        // 更新實時大字報
         if (latestPeople !== '--') {
             document.getElementById('currentPeople').innerText = latestPeople;
             let percent = Math.round((latestPeople / CAPACITY) * 100);
@@ -212,7 +210,6 @@
                 percentElement.classList.remove('text-danger');
             }
 
-            // === 計算未來一小時擁擠度預測 ===
             calculatePrediction(latestRecordTime, latestPeople, historyHalfHourSums, historyHalfHourCounts);
         }
 
@@ -233,20 +230,16 @@
     function calculatePrediction(nowTime, currentPeople, historySums, historyCounts) {
         if (!nowTime) return;
 
-        // 計算目前時間點的 Key
         const currentHour = nowTime.getHours();
         const currentMinSlot = nowTime.getMinutes() < 30 ? '00' : '30';
         const currentKey = `${String(currentHour).padStart(2, '0')}:${currentMinSlot}`;
 
-        // 當下時段的歷史平均人數
         const currentHistAvg = (historyCounts[currentKey] && historyCounts[currentKey] > 0)
             ? (historySums[currentKey] / historyCounts[currentKey])
             : currentPeople;
 
-        // 當下偏差係數 (例如今天比平時多 20% 人)
         const ratio = currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1;
 
-        // 計算 30 分鐘與 60 分鐘後的時間點
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
 
@@ -262,7 +255,6 @@
 
         document.getElementById(timeElemId).innerText = timeFormatted;
 
-        // 若超出一天的營業時間 (06:00 ~ 22:30)
         if (hour < 6 || hour > 22) {
             document.getElementById(textElemId).innerText = '已打烊';
             document.getElementById(badgeElemId).style.display = 'none';
@@ -273,9 +265,8 @@
             ? (historySums[key] / historyCounts[key])
             : 20;
 
-        // 預測人數 = 未來歷史平均 * 當下偏差係數
         let predPeople = Math.round(histAvg * ratio);
-        predPeople = Math.max(0, Math.min(CAPACITY, predPeople)); // 限制在 0 ~ 70 人
+        predPeople = Math.max(0, Math.min(CAPACITY, predPeople));
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
@@ -290,7 +281,68 @@
     async function renderCharts() {
         const data = await fetchAndProcessData();
 
-        // --- 繪製 1. 今日每半小時平均折線圖 (含擁擠度三色區間) ---
+        // 💡 自動計算當日最高與最低人數標註點
+        let maxLabel = null, maxVal = -1;
+        let minLabel = null, minVal = Infinity;
+
+        if (data.todayData.length > 0) {
+            data.todayData.forEach((val, idx) => {
+                if (val > maxVal) { maxVal = val; maxLabel = data.todayLabels[idx]; }
+                if (val < minVal) { minVal = val; minLabel = data.todayLabels[idx]; }
+            });
+        }
+
+        let annotationsConfig = {
+            comfortZone: {
+                type: 'box', yMin: 0, yMax: 25,
+                backgroundColor: 'rgba(143, 206, 0, 0.12)', borderWidth: 0,
+                label: { display: true, content: '綠色：舒適 (0-25人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(100, 140, 0, 0.8)' }
+            },
+            moderateZone: {
+                type: 'box', yMin: 25, yMax: 50,
+                backgroundColor: 'rgba(255, 193, 7, 0.12)', borderWidth: 0,
+                label: { display: true, content: '黃色：適中 (25-50人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(180, 130, 0, 0.8)' }
+            },
+            crowdedZone: {
+                type: 'box', yMin: 50, yMax: CAPACITY,
+                backgroundColor: 'rgba(255, 77, 77, 0.12)', borderWidth: 0,
+                label: { display: true, content: '紅色：擁擠 (50-70人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(200, 50, 50, 0.8)' }
+            }
+        };
+
+        // 最高點紅標
+        if (maxLabel !== null) {
+            annotationsConfig.maxPoint = {
+                type: 'point', xValue: maxLabel, yValue: maxVal,
+                backgroundColor: 'rgba(231, 76, 60, 1)', radius: 6
+            };
+            annotationsConfig.maxLabel = {
+                type: 'label', xValue: maxLabel, yValue: maxVal,
+                yAdjust: -16,
+                backgroundColor: 'rgba(231, 76, 60, 0.85)',
+                content: `最高 ${maxVal}人`,
+                color: '#fff', font: { size: 11, weight: 'bold' },
+                padding: 4, borderRadius: 4
+            };
+        }
+
+        // 最低點綠標 (避開最高點重疊)
+        if (minLabel !== null && minLabel !== maxLabel) {
+            annotationsConfig.minPoint = {
+                type: 'point', xValue: minLabel, yValue: minVal,
+                backgroundColor: 'rgba(46, 184, 92, 1)', radius: 6
+            };
+            annotationsConfig.minLabel = {
+                type: 'label', xValue: minLabel, yValue: minVal,
+                yAdjust: 16,
+                backgroundColor: 'rgba(46, 184, 92, 0.85)',
+                content: `最低 ${minVal}人`,
+                color: '#fff', font: { size: 11, weight: 'bold' },
+                padding: 4, borderRadius: 4
+            };
+        }
+
+        // --- 繪製 1. 今日每半小時平均折線圖 (含擁擠區間 + 高低點標註) ---
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
         todayChartInstance = new Chart(ctxToday, {
@@ -314,52 +366,7 @@
                 animation: { duration: 0 },
                 plugins: {
                     tooltip: tooltipFontConfig,
-                    annotation: {
-                        annotations: {
-                            comfortZone: {
-                                type: 'box',
-                                yMin: 0,
-                                yMax: 25,
-                                backgroundColor: 'rgba(143, 206, 0, 0.12)',
-                                borderWidth: 0,
-                                label: {
-                                    display: true,
-                                    content: '綠色：舒適 (0-25人)',
-                                    position: { x: 'start', y: 'center' },
-                                    font: { size: 12 },
-                                    color: 'rgba(100, 140, 0, 0.8)'
-                                }
-                            },
-                            moderateZone: {
-                                type: 'box',
-                                yMin: 25,
-                                yMax: 50,
-                                backgroundColor: 'rgba(255, 193, 7, 0.12)',
-                                borderWidth: 0,
-                                label: {
-                                    display: true,
-                                    content: '黃色：適中 (25-50人)',
-                                    position: { x: 'start', y: 'center' },
-                                    font: { size: 12 },
-                                    color: 'rgba(180, 130, 0, 0.8)'
-                                }
-                            },
-                            crowdedZone: {
-                                type: 'box',
-                                yMin: 50,
-                                yMax: CAPACITY,
-                                backgroundColor: 'rgba(255, 77, 77, 0.12)',
-                                borderWidth: 0,
-                                label: {
-                                    display: true,
-                                    content: '紅色：擁擠 (50-70人)',
-                                    position: { x: 'start', y: 'center' },
-                                    font: { size: 12 },
-                                    color: 'rgba(200, 50, 50, 0.8)'
-                                }
-                            }
-                        }
-                    }
+                    annotation: { annotations: annotationsConfig }
                 },
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
