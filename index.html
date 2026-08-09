@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>鼓山運動中心 - 健身房人流分析</title>
+    
+    <!-- PWA 支援設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0cb4b5">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <!-- 引入 Chart.js 圖表套件與 Annotation 背景標註套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -105,7 +113,6 @@
         padding: 10
     };
 
-    // 💡 國定假日判定清單 (格式: MM-DD)
     const TAIWAN_HOLIDAYS = [
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
@@ -128,15 +135,12 @@
         return { text: '擁擠', class: 'bg-red' };
     }
 
-    // 取得即時高雄鼓山天氣權重
     async function getWeatherWeight() {
         try {
-            // 使用 Open-Meteo 免費氣象 API 取得高雄鼓山地區即時降雨量 (Latitude: 22.65, Longitude: 120.28)
             const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=22.65&longitude=120.28&current_weather=true");
             const data = await res.json();
             const weatherCode = data.current_weather.weathercode;
             
-            // WMO Weather codes: 51-67, 80-82, 95-99 皆為降雨現象
             if ((weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 99)) {
                 return { weight: 1.20, desc: "🌧️ 雨天加權 (+20%)" };
             }
@@ -243,7 +247,6 @@
                 percentElement.classList.remove('text-danger');
             }
 
-            // 取得天氣加權與假日加權
             const weatherInfo = await getWeatherWeight();
             calculatePrediction(latestRecordTime, latestPeople, {
                 weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
@@ -272,7 +275,6 @@
         const currentMinSlot = nowTime.getMinutes() < 30 ? '00' : '30';
         const currentKey = `${String(currentHour).padStart(2, '0')}:${currentMinSlot}`;
 
-        // 判定國定假日或週末
         const monthDayStr = String(nowTime.getMonth() + 1).padStart(2, '0') + '-' + String(nowTime.getDate()).padStart(2, '0');
         const isHoliday = TAIWAN_HOLIDAYS.includes(monthDayStr);
         const isTodayWeekend = (nowTime.getDay() === 0 || nowTime.getDay() === 6) || isHoliday;
@@ -284,7 +286,6 @@
             ? (activeSums[currentKey] / activeCounts[currentKey])
             : currentPeople;
 
-        // 計算綜合偏差比率 (包含天氣加權)
         const ratio = (currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1) * weatherInfo.weight;
 
         let factorDesc = [];
@@ -503,6 +504,15 @@
 
     renderCharts();
     setInterval(renderCharts, 300000); 
+
+    // 💡 註冊 PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+                .catch(err => console.log('Service Worker 註冊失敗:', err));
+        });
+    }
 </script>
 
 </body>
