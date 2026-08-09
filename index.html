@@ -135,7 +135,6 @@
         return { text: '擁擠', class: 'bg-red' };
     }
 
-    // 將任意 Date 物件對齊到最接近的半小時 Key (例如 16:25 -> "16:30")
     function getHalfHourKey(dateObj) {
         const h = dateObj.getHours();
         const m = dateObj.getMinutes();
@@ -172,11 +171,14 @@
             if (cols.length === 2) {
                 const timeStr = cols[0];
                 const recordTime = new Date(timeStr.replace(/-/g, '/'));
-                const people = parseInt(cols[1]);
+                let people = parseInt(cols[1]);
 
                 if (!isNaN(people)) {
                     latestPeople = people;
                     latestRecordTime = recordTime;
+
+                    // 💡 自動修復舊測試資料：超過 70 人的異常數據視為上限 70 人
+                    const validPeople = Math.min(CAPACITY, people);
 
                     const hour = recordTime.getHours();
                     const timeKey = getHalfHourKey(recordTime);
@@ -187,16 +189,16 @@
                             if (!todayHalfHourMap[timeKey]) {
                                 todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
                             }
-                            todayHalfHourMap[timeKey].sum += people;
+                            todayHalfHourMap[timeKey].sum += validPeople;
                             todayHalfHourMap[timeKey].count += 1;
                         }
                     }
 
                     if (recordTime >= oneMonthAgo) {
-                        daySums[dayOfWeek] += people;
+                        daySums[dayOfWeek] += validPeople;
                         dayCounts[dayOfWeek]++;
 
-                        hourSums[hour] += people;
+                        hourSums[hour] += validPeople;
                         hourCounts[hour]++;
 
                         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
@@ -205,14 +207,14 @@
                                 historyWeekendSums[timeKey] = 0;
                                 historyWeekendCounts[timeKey] = 0;
                             }
-                            historyWeekendSums[timeKey] += people;
+                            historyWeekendSums[timeKey] += validPeople;
                             historyWeekendCounts[timeKey] += 1;
                         } else {
                             if (!historyWeekdaySums[timeKey]) {
                                 historyWeekdaySums[timeKey] = 0;
                                 historyWeekdayCounts[timeKey] = 0;
                             }
-                            historyWeekdaySums[timeKey] += people;
+                            historyWeekdaySums[timeKey] += validPeople;
                             historyWeekdayCounts[timeKey] += 1;
                         }
                     }
@@ -261,9 +263,6 @@
     function calculatePrediction(nowTime, currentPeople, historyData) {
         if (!nowTime) return;
 
-        // 正確抓取當下時間對應的半小時 Key (例如 15:56 -> "16:00")
-        const currentKey = getHalfHourKey(nowTime);
-
         const monthDayStr = String(nowTime.getMonth() + 1).padStart(2, '0') + '-' + String(nowTime.getDate()).padStart(2, '0');
         const isHoliday = TAIWAN_HOLIDAYS.includes(monthDayStr);
         const isTodayWeekend = (nowTime.getDay() === 0 || nowTime.getDay() === 6) || isHoliday;
@@ -271,26 +270,23 @@
         const activeSums = isTodayWeekend ? historyData.weekendSums : historyData.weekdaySums;
         const activeCounts = isTodayWeekend ? historyData.weekendCounts : historyData.weekdayCounts;
 
-        // 當下時段的歷史平均值 (若無紀錄則以當下人數為基準)
+        const currentKey = getHalfHourKey(nowTime);
         const currentHistAvg = (activeCounts[currentKey] && activeCounts[currentKey] > 0)
             ? (activeSums[currentKey] / activeCounts[currentKey])
             : currentPeople;
-
-        // 計算當下與歷史同期的差值 (例如今天比平時多 5 人)
-        const diff = currentPeople - currentHistAvg;
 
         const factorText = isHoliday ? "🎉 國定假日模式" : "";
 
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
 
-        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', diff, activeSums, activeCounts, factorText, currentPeople);
-        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', diff, activeSums, activeCounts, factorText, currentPeople);
+        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', activeSums, activeCounts, currentHistAvg, currentPeople, factorText);
+        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', activeSums, activeCounts, currentHistAvg, currentPeople, factorText);
     }
 
-    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, diff, activeSums, activeCounts, factorText, currentPeople) {
+    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, activeSums, activeCounts, currentHistAvg, currentPeople, factorText) {
         const hour = futureTime.getHours();
-        const key = getHalfHourKey(futureTime); // 正確對齊未來時間至半小時 Key
+        const key = getHalfHourKey(futureTime);
         const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
 
         document.getElementById(timeElemId).innerText = timeFormatted;
@@ -302,14 +298,16 @@
             return;
         }
 
-        // 未來時段的歷史平均人數 (若歷史資料不足，則直接以當前人數為基準)
-        const histAvg = (activeCounts[key] && activeCounts[key] > 0)
+        const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
             ? (activeSums[key] / activeCounts[key])
             : currentPeople;
 
-        // 💡 平滑加權公式：未來的歷史平均 + (當下偏差差值 * 0.6 衰減率)
-        let predPeople = Math.round(histAvg + (diff * 0.6));
-        predPeople = Math.max(0, Math.min(CAPACITY, predPeople)); // 嚴格限制在 0 ~ 70 人
+        // 💡 趨勢增量法：未來歷史人數 - 當下歷史人數 = 歷史時間趨勢變化量
+        const trendDelta = futureHistAvg - currentHistAvg;
+
+        // 預測人數 = 當前真實人數 + 歷史趨勢變化量
+        let predPeople = Math.round(currentPeople + trendDelta);
+        predPeople = Math.max(0, Math.min(CAPACITY, predPeople));
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
