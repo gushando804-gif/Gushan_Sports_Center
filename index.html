@@ -142,8 +142,9 @@
         let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
 
-        let historyHalfHourSums = {};
-        let historyHalfHourCounts = {};
+        // 💡 區分「平日 (weekday)」與「假日 (weekend)」的歷史統計容器
+        let historyWeekdaySums = {}, historyWeekdayCounts = {};
+        let historyWeekendSums = {}, historyWeekendCounts = {};
 
         rows.forEach(row => {
             const cols = row.split(',');
@@ -160,8 +161,9 @@
                     const minute = recordTime.getMinutes();
                     const halfHourSlot = minute < 30 ? '00' : '30';
                     const timeKey = `${String(hour).padStart(2, '0')}:${halfHourSlot}`;
+                    const dayOfWeek = recordTime.getDay(); // 0: 週日, 1-5: 週一至五, 6: 週六
 
-                    // 今日數據 (限定 06:00~22:59)
+                    // 今日數據 (06:00~22:59)
                     if (timeStr.startsWith(todayDateString)) {
                         if (hour >= 6 && hour <= 22) {
                             if (!todayHalfHourMap[timeKey]) {
@@ -172,21 +174,30 @@
                         }
                     }
 
-                    // 過去一個月歷史統計
+                    // 過去一個月歷史統計 (區分平日/假日)
                     if (recordTime >= oneMonthAgo) {
-                        const day = recordTime.getDay();
-                        daySums[day] += people;
-                        dayCounts[day]++;
+                        daySums[dayOfWeek] += people;
+                        dayCounts[dayOfWeek]++;
 
                         hourSums[hour] += people;
                         hourCounts[hour]++;
 
-                        if (!historyHalfHourSums[timeKey]) {
-                            historyHalfHourSums[timeKey] = 0;
-                            historyHalfHourCounts[timeKey] = 0;
+                        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                        if (isWeekend) {
+                            if (!historyWeekendSums[timeKey]) {
+                                historyWeekendSums[timeKey] = 0;
+                                historyWeekendCounts[timeKey] = 0;
+                            }
+                            historyWeekendSums[timeKey] += people;
+                            historyWeekendCounts[timeKey] += 1;
+                        } else {
+                            if (!historyWeekdaySums[timeKey]) {
+                                historyWeekdaySums[timeKey] = 0;
+                                historyWeekdayCounts[timeKey] = 0;
+                            }
+                            historyWeekdaySums[timeKey] += people;
+                            historyWeekdayCounts[timeKey] += 1;
                         }
-                        historyHalfHourSums[timeKey] += people;
-                        historyHalfHourCounts[timeKey] += 1;
                     }
                 }
             }
@@ -210,7 +221,11 @@
                 percentElement.classList.remove('text-danger');
             }
 
-            calculatePrediction(latestRecordTime, latestPeople, historyHalfHourSums, historyHalfHourCounts);
+            // === 傳入平/假日分類數據進行精準預測 ===
+            calculatePrediction(latestRecordTime, latestPeople, {
+                weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
+                weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
+            });
         }
 
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
@@ -227,15 +242,20 @@
         return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
     }
 
-    function calculatePrediction(nowTime, currentPeople, historySums, historyCounts) {
+    function calculatePrediction(nowTime, currentPeople, historyData) {
         if (!nowTime) return;
 
         const currentHour = nowTime.getHours();
         const currentMinSlot = nowTime.getMinutes() < 30 ? '00' : '30';
         const currentKey = `${String(currentHour).padStart(2, '0')}:${currentMinSlot}`;
 
-        const currentHistAvg = (historyCounts[currentKey] && historyCounts[currentKey] > 0)
-            ? (historySums[currentKey] / historyCounts[currentKey])
+        // 判斷當下是平日還是假日
+        const isTodayWeekend = (nowTime.getDay() === 0 || nowTime.getDay() === 6);
+        const activeSums = isTodayWeekend ? historyData.weekendSums : historyData.weekdaySums;
+        const activeCounts = isTodayWeekend ? historyData.weekendCounts : historyData.weekdayCounts;
+
+        const currentHistAvg = (activeCounts[currentKey] && activeCounts[currentKey] > 0)
+            ? (activeSums[currentKey] / activeCounts[currentKey])
             : currentPeople;
 
         const ratio = currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1;
@@ -243,11 +263,11 @@
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
 
-        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', ratio, historySums, historyCounts);
-        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', ratio, historySums, historyCounts);
+        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', ratio, activeSums, activeCounts);
+        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', ratio, activeSums, activeCounts);
     }
 
-    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, ratio, historySums, historyCounts) {
+    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, ratio, activeSums, activeCounts) {
         const hour = futureTime.getHours();
         const minSlot = futureTime.getMinutes() < 30 ? '00' : '30';
         const key = `${String(hour).padStart(2, '0')}:${minSlot}`;
@@ -261,8 +281,8 @@
             return;
         }
 
-        const histAvg = (historyCounts[key] && historyCounts[key] > 0)
-            ? (historySums[key] / historyCounts[key])
+        const histAvg = (activeCounts[key] && activeCounts[key] > 0)
+            ? (activeSums[key] / activeCounts[key])
             : 20;
 
         let predPeople = Math.round(histAvg * ratio);
@@ -281,7 +301,6 @@
     async function renderCharts() {
         const data = await fetchAndProcessData();
 
-        // 💡 自動計算當日最高與最低人數標註點
         let maxLabel = null, maxVal = -1;
         let minLabel = null, minVal = Infinity;
 
@@ -310,7 +329,6 @@
             }
         };
 
-        // 最高點紅標
         if (maxLabel !== null) {
             annotationsConfig.maxPoint = {
                 type: 'point', xValue: maxLabel, yValue: maxVal,
@@ -326,7 +344,6 @@
             };
         }
 
-        // 最低點綠標 (避開最高點重疊)
         if (minLabel !== null && minLabel !== maxLabel) {
             annotationsConfig.minPoint = {
                 type: 'point', xValue: minLabel, yValue: minVal,
@@ -342,7 +359,6 @@
             };
         }
 
-        // --- 繪製 1. 今日每半小時平均折線圖 (含擁擠區間 + 高低點標註) ---
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
         todayChartInstance = new Chart(ctxToday, {
@@ -383,7 +399,6 @@
         const wrapper = document.getElementById('todayChartWrapper');
         wrapper.scrollLeft = wrapper.scrollWidth;
 
-        // --- 繪製 2. 週一至週日平均 長條圖 ---
         if (dayChartInstance) dayChartInstance.destroy();
         const ctxDay = document.getElementById('dayChart').getContext('2d');
         dayChartInstance = new Chart(ctxDay, {
@@ -416,7 +431,6 @@
             }
         });
 
-        // --- 繪製 3. 營業時段平均 長條圖 ---
         if (hourChartInstance) hourChartInstance.destroy();
         const ctxHour = document.getElementById('hourChart').getContext('2d');
         hourChartInstance = new Chart(ctxHour, {
