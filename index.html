@@ -271,19 +271,19 @@
             ? (activeSums[currentKey] / activeCounts[currentKey])
             : currentPeople;
 
-        // 計算純歷史偏差比率（不再乘天氣加權）
-        const ratio = currentHistAvg > 0 ? (currentPeople / currentHistAvg) : 1;
+        // 💡 平滑差值計算：計算當下與歷史平均的絕對人數差值
+        const diff = currentPeople - currentHistAvg;
 
         const factorText = isHoliday ? "🎉 國定假日模式" : "";
 
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
 
-        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', ratio, activeSums, activeCounts, factorText);
-        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', ratio, activeSums, activeCounts, factorText);
+        updatePredItem(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', diff, activeSums, activeCounts, factorText);
+        updatePredItem(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', diff, activeSums, activeCounts, factorText);
     }
 
-    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, ratio, activeSums, activeCounts, factorText) {
+    function updatePredItem(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, diff, activeSums, activeCounts, factorText) {
         const hour = futureTime.getHours();
         const minSlot = futureTime.getMinutes() < 30 ? '00' : '30';
         const key = `${String(hour).padStart(2, '0')}:${minSlot}`;
@@ -302,7 +302,8 @@
             ? (activeSums[key] / activeCounts[key])
             : 20;
 
-        let predPeople = Math.round(histAvg * ratio);
+        // 💡 預測人數 = 未來歷史平均 + (當下差值 * 衰減係數 0.7)
+        let predPeople = Math.round(histAvg + (diff * 0.7));
         predPeople = Math.max(0, Math.min(CAPACITY, predPeople));
 
         const statusInfo = getCrowdednessStatus(predPeople);
