@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>鼓山運動中心 - 健身房人流分析</title>
-    <!-- 引入 Chart.js 圖表套件 -->
+    <!-- 引入 Chart.js 圖表套件與 Annotation 背景標註套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -182,7 +183,7 @@
     async function renderCharts() {
         const data = await fetchAndProcessData();
 
-        // --- 繪製 1. 今日每半小時平均折線圖 ---
+        // --- 繪製 1. 今日每半小時平均折線圖 (含擁擠度三色區間) ---
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
         todayChartInstance = new Chart(ctxToday, {
@@ -194,9 +195,9 @@
                     data: data.todayData,
                     borderColor: 'rgba(12, 180, 181, 1)',
                     backgroundColor: 'rgba(12, 180, 181, 0.2)',
-                    borderWidth: 2,
+                    borderWidth: 3,
                     pointRadius: 4,
-                    fill: true,
+                    fill: false, // 關閉單色填滿以展示背景三色區間
                     tension: 0.3
                 }]
             },
@@ -205,14 +206,61 @@
                 maintainAspectRatio: false,
                 animation: { duration: 0 },
                 plugins: {
-                    tooltip: tooltipFontConfig
+                    tooltip: tooltipFontConfig,
+                    // 背景擁擠度三色標註設定
+                    annotation: {
+                        annotations: {
+                            comfortZone: {
+                                type: 'box',
+                                yMin: 0,
+                                yMax: 25,
+                                backgroundColor: 'rgba(143, 206, 0, 0.12)',
+                                borderWidth: 0,
+                                label: {
+                                    display: true,
+                                    content: '綠色：舒適 (0-25人)',
+                                    position: { x: 'start', y: 'center' },
+                                    font: { size: 12 },
+                                    color: 'rgba(100, 140, 0, 0.8)'
+                                }
+                            },
+                            moderateZone: {
+                                type: 'box',
+                                yMin: 25,
+                                yMax: 50,
+                                backgroundColor: 'rgba(255, 193, 7, 0.12)',
+                                borderWidth: 0,
+                                label: {
+                                    display: true,
+                                    content: '黃色：適中 (25-50人)',
+                                    position: { x: 'start', y: 'center' },
+                                    font: { size: 12 },
+                                    color: 'rgba(180, 130, 0, 0.8)'
+                                }
+                            },
+                            crowdedZone: {
+                                type: 'box',
+                                yMin: 50,
+                                yMax: CAPACITY,
+                                backgroundColor: 'rgba(255, 77, 77, 0.12)',
+                                borderWidth: 0,
+                                label: {
+                                    display: true,
+                                    content: '紅色：擁擠 (50-70人)',
+                                    position: { x: 'start', y: 'center' },
+                                    font: { size: 12 },
+                                    color: 'rgba(200, 50, 50, 0.8)'
+                                }
+                            }
+                        }
+                    }
                 },
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
                         ticks: { font: { size: 14, weight: 'bold' } }, 
                         beginAtZero: true, 
-                        suggestedMax: CAPACITY, 
+                        max: CAPACITY, // 固定 Y 軸最大上限為 70 人
                         title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
                     } 
                 }
