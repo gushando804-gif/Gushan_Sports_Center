@@ -15,6 +15,19 @@
     <!-- 引入 Chart.js 圖表套件與 Annotation 背景標註套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
+    <!-- 👇 Google Analytics (GA4) 追蹤代碼 👇 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BDLCXW3CWQ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      // ⚠️ 請將下方的 G-XXXXXXXXXX 換成您自己的 GA4 評估 ID
+      gtag('config', 'G-BDLCXW3CWQ');
+    </script>
+    <!-- 👆 Google Analytics (GA4) 追蹤代碼 👆 -->
+
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
