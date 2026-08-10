@@ -176,6 +176,7 @@
 
         let daySums = Array(7).fill(0);
         let dayCounts = Array(7).fill(0);
+        let dayMaxs = Array(7).fill(0); // 💡 新增：用來記錄每週各日的最高人數 (Peak)
         let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
 
@@ -215,6 +216,11 @@
                         if (hour >= 6 && hour <= 22) {
                             daySums[dayOfWeek] += validPeople;
                             dayCounts[dayOfWeek]++;
+
+                            // 💡 判斷並更新該日的最高人數 (Peak)
+                            if (validPeople > dayMaxs[dayOfWeek]) {
+                                dayMaxs[dayOfWeek] = validPeople;
+                            }
 
                             hourSums[hour] += validPeople;
                             hourCounts[hour]++;
@@ -268,6 +274,9 @@
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
         const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
+        
+        // 💡 將最高人數陣列轉換為「週一至週日」的正確排序
+        const dayMaxsOrdered = dayOrder.map(d => dayMaxs[d]);
 
         const hourLabels = [];
         const hourAvgs = [];
@@ -276,7 +285,8 @@
             hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
         }
 
-        return { todayLabels, todayData, dayLabels, dayAvgs, hourLabels, hourAvgs };
+        // 💡 回傳時加入 dayMaxsOrdered
+        return { todayLabels, todayData, dayLabels, dayAvgs, dayMaxsOrdered, hourLabels, hourAvgs };
     }
 
     function calculatePrediction(nowTime, currentPeople, historyData) {
@@ -454,30 +464,51 @@
         if (dayChartInstance) dayChartInstance.destroy();
         const ctxDay = document.getElementById('dayChart').getContext('2d');
         dayChartInstance = new Chart(ctxDay, {
-            type: 'bar',
+            type: 'bar', // 主體為混合圖表
             data: {
                 labels: data.dayLabels,
-                datasets: [{
-                    label: '平均人數',
-                    data: data.dayAvgs,
-                    backgroundColor: getBarColors(data.dayAvgs),
-                    borderRadius: 5
-                }]
+                datasets: [
+                    {
+                        type: 'bar', // 柱狀圖顯示平均人數
+                        label: '平均人數',
+                        data: data.dayAvgs,
+                        backgroundColor: getBarColors(data.dayAvgs),
+                        borderRadius: 5,
+                        order: 2
+                    },
+                    {
+                        type: 'line', // 折線圖顯示最高 Peak
+                        label: '最高人數 (Peak)',
+                        data: data.dayMaxsOrdered,
+                        borderColor: 'rgba(231, 76, 60, 0.8)',
+                        backgroundColor: 'rgba(231, 76, 60, 1)',
+                        borderWidth: 2,
+                        pointRadius: 5,
+                        pointStyle: 'rectRot',
+                        fill: false,
+                        order: 1
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 0 },
                 plugins: { 
-                    legend: { display: false },
+                    legend: { 
+                        display: true, // 顯示圖例
+                        position: 'top',
+                        labels: { font: { size: 14, weight: 'bold' } }
+                    },
                     tooltip: tooltipFontConfig
                 }, 
                 scales: { 
                     x: { ticks: { font: { size: 14, weight: 'bold' } } },
                     y: { 
                         ticks: { font: { size: 14, weight: 'bold' } }, 
-                        beginAtZero: true, 
-                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
+                        beginAtZero: true,
+                        max: CAPACITY, // 將 Y 軸上限鎖定為 70
+                        title: { display: true, text: '人數', font: { size: 16, weight: 'bold' } } 
                     } 
                 }
             }
