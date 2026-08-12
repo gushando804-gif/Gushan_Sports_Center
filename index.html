@@ -72,9 +72,9 @@
 <div class="container">
     <!-- 實時狀態大字報 -->
     <div class="live-status">
-        <p class="live-title">🏃‍♂️ 健身房 現在人數 / 容留人數</p>
+        <p class="live-title">🏃‍♂️ 鼓山運動中心 - 健身房人流分析</p>現在人數/容留人數</p>
         <p class="live-numbers">
-            <span id="currentPeople">--</span> / 70 
+            <span id="currentPeople">--</span>/70 
             <span class="live-percentage" id="currentPercent">( --% )</span>
         </p>
     </div>
@@ -82,13 +82,13 @@
     <!-- 未來一小時擁擠度預測卡片 -->
     <div class="prediction-box">
         <div class="prediction-item">
-            <div class="pred-time">🔮 預測 30 分鐘後 (<span id="pred30Time">--:--</span>)</div>
+            <div class="pred-time">🔮 預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
             <div class="pred-status" id="pred30Text">計算中...</div>
             <div id="pred30Badge" class="pred-badge" style="display:none;">--</div>
             <div id="pred30Factor" class="pred-factors"></div>
         </div>
         <div class="prediction-item">
-            <div class="pred-time">🔮 預測 60 分鐘後 (<span id="pred60Time">--:--</span>)</div>
+            <div class="pred-time">🔮 預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
             <div class="pred-status" id="pred60Text">計算中...</div>
             <div id="pred60Badge" class="pred-badge" style="display:none;">--</div>
             <div id="pred60Factor" class="pred-factors"></div>
@@ -103,12 +103,12 @@
         </div>
     </div>
 
-    <h2>📊 近 30 日每週各日平均人流</h2>
+    <h2>📊 近30日每週各日平均人流</h2>
     <div class="chart-container">
         <canvas id="dayChart"></canvas>
     </div>
 
-    <h2>⏰ 近 30 日營運時段平均人流</h2>
+    <h2>⏰ 近30日營運時段平均人流</h2>
     <div class="chart-container">
         <canvas id="hourChart"></canvas>
     </div>
