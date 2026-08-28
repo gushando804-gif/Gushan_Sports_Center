@@ -50,7 +50,7 @@
         .refresh-bar {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         .refresh-badge {
             display: inline-flex;
@@ -73,7 +73,7 @@
             text-align: center;
         }
         
-        /* 實時狀態大字報設計 */
+        /* 實時狀態大字報設計 - 字體全面加大放大 */
         .live-status { 
             text-align: center; 
             padding: clamp(24px, 5vw, 42px) 15px; 
@@ -84,34 +84,34 @@
             border-top: 8px solid #0cb4b5; 
         }
         .live-title-main { 
-            font-size: clamp(2rem, 5.8vw, 3.2rem); 
+            font-size: clamp(2.4rem, 6.8vw, 3.8rem); 
             color: #1e293b; 
             margin: 0 0 6px 0; 
             font-weight: 900; 
             line-height: 1.2;
         }
         .live-title-sub { 
-            font-size: clamp(2rem, 5.8vw, 3.2rem); 
-            color: #0cb4b5; 
+            font-size: clamp(2rem, 5.6vw, 3.2rem); 
+            color: #1e293b; /* 黑色 */
             margin: 0 0 14px 0; 
             font-weight: 900; 
             line-height: 1.2;
         }
         .live-subtitle { 
-            font-size: clamp(1.3rem, 3.8vw, 2.0rem); 
-            color: #475569; 
-            font-weight: 800; 
+            font-size: clamp(1.5rem, 4.4vw, 2.4rem); 
+            color: #334155; 
+            font-weight: 900; 
             margin-bottom: 16px; 
         }
         .live-numbers { 
-            font-size: clamp(3.8rem, 13vw, 6.2rem); 
+            font-size: clamp(4.2rem, 14vw, 6.8rem); 
             font-weight: 900; 
             color: #0f172a; 
             margin: 0; 
             line-height: 1.05; 
         }
         .live-percentage { 
-            font-size: clamp(1.8rem, 6vw, 3rem); 
+            font-size: clamp(2rem, 6.5vw, 3.2rem); 
             color: #64748b; 
             font-weight: 700; 
         }
@@ -136,11 +136,21 @@
             border: 2px solid transparent; 
             transition: all 0.3s ease;
         }
-        .pred-time { 
-            font-size: clamp(1.1rem, 3vw, 1.45rem); 
+        
+        /* 預測時間主動斷行與大字體設計 */
+        .pred-time-label { 
+            font-size: clamp(1.15rem, 3.4vw, 1.55rem); 
             color: #334155; 
             font-weight: 800; 
-            margin-bottom: 10px; 
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+        .pred-time-clock {
+            font-size: clamp(1.3rem, 3.8vw, 1.75rem);
+            color: #1e293b;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 12px;
         }
         .pred-count { 
             font-size: clamp(1.6rem, 4.5vw, 2.3rem); 
@@ -209,10 +219,10 @@
 <body>
 
 <div class="container">
-    <!-- 30秒倒數重整徽章 -->
+    <!-- 10 秒倒數重整徽章 -->
     <div class="refresh-bar">
         <div class="refresh-badge">
-            🔄 <span class="countdown-num" id="countdown">30</span> 秒後自動更新
+            🔄 <span class="countdown-num" id="countdown">10</span> 秒後自動更新
         </div>
     </div>
 
@@ -230,13 +240,15 @@
     <!-- 未來一小時擁擠度預測卡片 -->
     <div class="prediction-box">
         <div class="prediction-item card-default" id="pred30Card">
-            <div class="pred-time">預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
+            <div class="pred-time-label">預測30分鐘後</div>
+            <div class="pred-time-clock">(<span id="pred30Time">--:--</span>)</div>
             <div class="pred-count" id="pred30Count">計算中...</div>
             <div class="pred-level" id="pred30Level"></div>
             <div id="pred30Factor" class="pred-factors"></div>
         </div>
         <div class="prediction-item card-default" id="pred60Card">
-            <div class="pred-time">預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
+            <div class="pred-time-label">預測60分鐘後</div>
+            <div class="pred-time-clock">(<span id="pred60Time">--:--</span>)</div>
             <div class="pred-count" id="pred60Count">計算中...</div>
             <div class="pred-level" id="pred60Level"></div>
             <div id="pred60Factor" class="pred-factors"></div>
@@ -417,7 +429,6 @@
             const currentPeopleElem = document.getElementById('currentPeople');
             currentPeopleElem.innerText = latestPeople;
             
-            // 依人流等級動態賦予顏色 (綠 / 黃 / 紅)
             currentPeopleElem.classList.remove('text-level-green', 'text-level-yellow', 'text-level-red');
             const currentStatus = getCrowdednessStatus(latestPeople);
             currentPeopleElem.classList.add(currentStatus.textClass);
@@ -605,6 +616,9 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { left: 12 }
+                },
                 animation: { duration: 0 },
                 plugins: {
                     legend: {
@@ -660,6 +674,9 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { left: 12 }
+                },
                 animation: { duration: 0 },
                 plugins: { 
                     legend: { 
@@ -697,6 +714,9 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { left: 12 }
+                },
                 animation: { duration: 0 },
                 plugins: { 
                     legend: { display: false },
