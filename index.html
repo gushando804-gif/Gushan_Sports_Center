@@ -45,7 +45,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
         }
         
-        /* 實時狀態大字報設計 (字體自動縮放至最大) */
+        /* 實時狀態大字報設計 */
         .live-status { 
             text-align: center; 
             padding: clamp(20px, 4vw, 35px) 15px; 
@@ -81,7 +81,7 @@
         }
         .text-danger { color: #e74c3c !important; }
 
-        /* 未來一小時預測卡片：直接以底框色與大字體展示舒適狀態 */
+        /* 未來一小時預測卡片：換行顯示 */
         .prediction-box { 
             display: flex; 
             gap: 15px; 
@@ -101,9 +101,15 @@
             font-weight: 800; 
             margin-bottom: 8px; 
         }
-        .pred-status { 
-            font-size: clamp(1.4rem, 4.2vw, 2rem); 
-            font-weight: 900; 
+        .pred-count { 
+            font-size: clamp(1.3rem, 3.8vw, 1.8rem); 
+            font-weight: 800; 
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+        .pred-level {
+            font-size: clamp(1.4rem, 4.2vw, 2rem);
+            font-weight: 900;
             line-height: 1.2;
         }
         .pred-factors { 
@@ -172,16 +178,18 @@
         </div>
     </div>
 
-    <!-- 未來一小時擁擠度預測卡片 (底框直接套色) -->
+    <!-- 未來一小時擁擠度預測卡片 -->
     <div class="prediction-box">
         <div class="prediction-item card-default" id="pred30Card">
-            <div class="pred-time">🔮 預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
-            <div class="pred-status" id="pred30Text">計算中...</div>
+            <div class="pred-time">預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
+            <div class="pred-count" id="pred30Count">計算中...</div>
+            <div class="pred-level" id="pred30Level"></div>
             <div id="pred30Factor" class="pred-factors"></div>
         </div>
         <div class="prediction-item card-default" id="pred60Card">
-            <div class="pred-time">🔮 預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
-            <div class="pred-status" id="pred60Text">計算中...</div>
+            <div class="pred-time">預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
+            <div class="pred-count" id="pred60Count">計算中...</div>
+            <div class="pred-level" id="pred60Level"></div>
             <div id="pred60Factor" class="pred-factors"></div>
         </div>
     </div>
@@ -395,8 +403,8 @@
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
         const pred60People = getSmoothedPred(time60, activeSums, activeCounts, currentHistAvg, pred30People);
 
-        renderPredUI(time30, 'pred30Card', 'pred30Time', 'pred30Text', 'pred30Factor', pred30People, factorText);
-        renderPredUI(time60, 'pred60Card', 'pred60Time', 'pred60Text', 'pred60Factor', pred60People, factorText);
+        renderPredUI(time30, 'pred30Card', 'pred30Time', 'pred30Count', 'pred30Level', 'pred30Factor', pred30People, factorText);
+        renderPredUI(time60, 'pred60Card', 'pred60Time', 'pred60Count', 'pred60Level', 'pred60Factor', pred60People, factorText);
     }
 
     function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
@@ -413,15 +421,18 @@
         return Math.max(0, Math.min(CAPACITY, pred));
     }
 
-    function renderPredUI(futureTime, cardElemId, timeElemId, textElemId, factorElemId, predPeople, factorText) {
+    function renderPredUI(futureTime, cardElemId, timeElemId, countElemId, levelElemId, factorElemId, predPeople, factorText) {
         const hour = futureTime.getHours();
         const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
 
         document.getElementById(timeElemId).innerText = timeFormatted;
         const cardElem = document.getElementById(cardElemId);
+        const countElem = document.getElementById(countElemId);
+        const levelElem = document.getElementById(levelElemId);
 
         if (predPeople === -1) {
-            document.getElementById(textElemId).innerText = '已打烊';
+            countElem.innerText = '已打烊';
+            levelElem.innerText = '';
             cardElem.className = 'prediction-item card-default';
             document.getElementById(factorElemId).innerText = '';
             return;
@@ -429,10 +440,11 @@
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
-        // 將「約 XX 人 · 舒適/適中/擁擠」融合為醒目的大字體
-        document.getElementById(textElemId).innerText = `約 ${predPeople} 人 · ${statusInfo.text}`;
+        // 換行顯示：第 1 行顯示人數，第 2 行顯示舒適狀態
+        countElem.innerText = `約 ${predPeople} 人`;
+        levelElem.innerText = statusInfo.text;
         
-        // 直接將底框套用對應的綠/黃/紅背景樣式
+        // 底框套用狀態顏色
         cardElem.className = `prediction-item ${statusInfo.cardClass}`;
 
         document.getElementById(factorElemId).innerText = factorText;
