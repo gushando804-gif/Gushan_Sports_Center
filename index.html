@@ -33,89 +33,89 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif; 
             background-color: #f4f7f6; 
             margin: 0; 
-            padding: clamp(10px, 3vw, 20px); 
+            padding: clamp(10px, 3vw, 24px); 
         }
         
         .container { 
             max-width: 1000px; 
             margin: 0 auto; 
             background: white; 
-            padding: clamp(15px, 3vw, 25px); 
-            border-radius: 12px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            padding: clamp(16px, 3.5vw, 32px); 
+            border-radius: 16px; 
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08); 
         }
         
         /* 實時狀態大字報設計 */
         .live-status { 
             text-align: center; 
-            padding: clamp(20px, 4vw, 35px) 15px; 
+            padding: clamp(24px, 5vw, 42px) 15px; 
             background: #fff; 
-            border-radius: 12px; 
-            margin-bottom: 20px; 
+            border-radius: 14px; 
+            margin-bottom: 24px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.04); 
-            border-top: 6px solid #0cb4b5; 
+            border-top: 8px solid #0cb4b5; 
         }
         .live-title { 
-            font-size: clamp(1.2rem, 3.5vw, 1.8rem); 
-            color: #222; 
-            margin: 0 0 8px 0; 
+            font-size: clamp(1.4rem, 4.2vw, 2.2rem); 
+            color: #1e293b; 
+            margin: 0 0 10px 0; 
             font-weight: 800; 
         }
         .live-subtitle { 
-            font-size: clamp(1rem, 2.8vw, 1.3rem); 
-            color: #666; 
+            font-size: clamp(1.1rem, 3.2vw, 1.6rem); 
+            color: #64748b; 
             font-weight: bold; 
-            margin-bottom: 12px; 
+            margin-bottom: 14px; 
         }
         .live-numbers { 
-            font-size: clamp(3.2rem, 11vw, 5rem); 
+            font-size: clamp(3.8rem, 13vw, 6.2rem); 
             font-weight: 900; 
-            color: #1e293b; 
+            color: #0f172a; 
             margin: 0; 
-            line-height: 1.1; 
+            line-height: 1.05; 
         }
         .live-percentage { 
-            font-size: clamp(1.5rem, 5vw, 2.4rem); 
+            font-size: clamp(1.8rem, 6vw, 3rem); 
             color: #64748b; 
-            font-weight: 600; 
+            font-weight: 700; 
         }
         .text-danger { color: #e74c3c !important; }
 
-        /* 未來一小時預測卡片：換行顯示 */
+        /* 未來一小時預測卡片 */
         .prediction-box { 
             display: flex; 
-            gap: 15px; 
-            margin-bottom: 30px; 
+            gap: 16px; 
+            margin-bottom: 35px; 
         }
         .prediction-item { 
             flex: 1; 
             text-align: center; 
-            padding: clamp(14px, 3vw, 22px) 10px; 
-            border-radius: 12px; 
+            padding: clamp(18px, 4vw, 28px) 12px; 
+            border-radius: 14px; 
             border: 2px solid transparent; 
             transition: all 0.3s ease;
         }
         .pred-time { 
-            font-size: clamp(0.95rem, 2.6vw, 1.25rem); 
+            font-size: clamp(1.1rem, 3vw, 1.45rem); 
             color: #334155; 
             font-weight: 800; 
-            margin-bottom: 8px; 
+            margin-bottom: 10px; 
         }
         .pred-count { 
-            font-size: clamp(1.3rem, 3.8vw, 1.8rem); 
+            font-size: clamp(1.6rem, 4.5vw, 2.3rem); 
             font-weight: 800; 
             line-height: 1.2;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         .pred-level {
-            font-size: clamp(1.4rem, 4.2vw, 2rem);
+            font-size: clamp(1.8rem, 5.2vw, 2.6rem);
             font-weight: 900;
             line-height: 1.2;
         }
         .pred-factors { 
-            font-size: clamp(0.75rem, 2vw, 0.95rem); 
+            font-size: clamp(0.9rem, 2.4vw, 1.15rem); 
             color: #0cb4b5; 
-            margin-top: 6px; 
+            margin-top: 8px; 
             font-weight: bold; 
         }
 
@@ -143,25 +143,25 @@
 
         h2 { 
             text-align: center; 
-            color: #333; 
+            color: #1e293b; 
             border-bottom: 2px solid #eee; 
-            padding-bottom: 10px; 
-            margin-top: 35px; 
-            font-size: clamp(1.2rem, 3.2vw, 1.5rem); 
-            font-weight: bold; 
+            padding-bottom: 12px; 
+            margin-top: 40px; 
+            font-size: clamp(1.4rem, 3.8vw, 1.9rem); 
+            font-weight: 800; 
         }
-        .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
+        .chart-container { position: relative; height: 50vh; width: 100%; margin-bottom: 45px; }
 
         .scrollable-chart-wrapper {
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            margin-bottom: 40px;
+            margin-bottom: 45px;
         }
         .scrollable-chart-inner {
             position: relative;
-            height: 45vh;
-            min-width: 650px; 
+            height: 50vh;
+            min-width: 680px; 
         }
     </style>
 </head>
@@ -181,13 +181,13 @@
     <!-- 未來一小時擁擠度預測卡片 -->
     <div class="prediction-box">
         <div class="prediction-item card-default" id="pred30Card">
-            <div class="pred-time">預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
+            <div class="pred-time">🔮 預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
             <div class="pred-count" id="pred30Count">計算中...</div>
             <div class="pred-level" id="pred30Level"></div>
             <div id="pred30Factor" class="pred-factors"></div>
         </div>
         <div class="prediction-item card-default" id="pred60Card">
-            <div class="pred-time">預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
+            <div class="pred-time">🔮 預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
             <div class="pred-count" id="pred60Count">計算中...</div>
             <div class="pred-level" id="pred60Level"></div>
             <div id="pred60Factor" class="pred-factors"></div>
@@ -217,14 +217,21 @@
     let dayChartInstance = null;
     let hourChartInstance = null;
 
-    const CAPACITY = 70; // 設定容留上限
+    const CAPACITY = 70;
 
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif';
 
+    const getDynamicFontSize = (base) => {
+        const width = window.innerWidth;
+        if (width < 480) return base;
+        if (width < 768) return base + 2;
+        return base + 4;
+    };
+
     const tooltipFontConfig = {
-        titleFont: { size: 16, weight: 'bold' },
-        bodyFont: { size: 16 },
-        padding: 10
+        titleFont: { size: 18, weight: 'bold' },
+        bodyFont: { size: 18 },
+        padding: 12
     };
 
     const TAIWAN_HOLIDAYS = [
@@ -237,9 +244,9 @@
         const minVal = validData.length > 0 ? Math.min(...validData) : 0;
 
         return dataArray.map(val => {
-            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.8)'; 
-            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.8)';  
-            return 'rgba(200, 200, 200, 0.5)';                                
+            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.85)'; 
+            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.85)';  
+            return 'rgba(200, 200, 200, 0.55)';                                
         });
     }
 
@@ -440,18 +447,17 @@
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
-        // 換行顯示：第 1 行顯示人數，第 2 行顯示舒適狀態
         countElem.innerText = `約 ${predPeople} 人`;
         levelElem.innerText = statusInfo.text;
-        
-        // 底框套用狀態顏色
         cardElem.className = `prediction-item ${statusInfo.cardClass}`;
-
         document.getElementById(factorElemId).innerText = factorText;
     }
 
     async function renderCharts() {
         const data = await fetchAndProcessData();
+        const tickFontSize = getDynamicFontSize(14);
+        const titleFontSize = getDynamicFontSize(16);
+        const labelFontSize = getDynamicFontSize(13);
 
         let maxLabel = null, maxVal = -1;
         let minLabel = null, minVal = Infinity;
@@ -467,47 +473,47 @@
             comfortZone: {
                 type: 'box', yMin: 0, yMax: 25,
                 backgroundColor: 'rgba(143, 206, 0, 0.12)', borderWidth: 0,
-                label: { display: true, content: '綠色：舒適 (0-25人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(100, 140, 0, 0.8)' }
+                label: { display: true, content: '綠色：舒適 (0-25人)', position: { x: 'start', y: 'center' }, font: { size: labelFontSize, weight: 'bold' }, color: 'rgba(100, 140, 0, 0.9)' }
             },
             moderateZone: {
                 type: 'box', yMin: 25, yMax: 50,
                 backgroundColor: 'rgba(255, 193, 7, 0.12)', borderWidth: 0,
-                label: { display: true, content: '黃色：適中 (25-50人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(180, 130, 0, 0.8)' }
+                label: { display: true, content: '黃色：適中 (25-50人)', position: { x: 'start', y: 'center' }, font: { size: labelFontSize, weight: 'bold' }, color: 'rgba(180, 130, 0, 0.9)' }
             },
             crowdedZone: {
                 type: 'box', yMin: 50, yMax: CAPACITY,
                 backgroundColor: 'rgba(255, 77, 77, 0.12)', borderWidth: 0,
-                label: { display: true, content: '紅色：擁擠 (50-70人)', position: { x: 'start', y: 'center' }, font: { size: 12 }, color: 'rgba(200, 50, 50, 0.8)' }
+                label: { display: true, content: '紅色：擁擠 (50-70人)', position: { x: 'start', y: 'center' }, font: { size: labelFontSize, weight: 'bold' }, color: 'rgba(200, 50, 50, 0.9)' }
             }
         };
 
         if (maxLabel !== null) {
             annotationsConfig.maxPoint = {
                 type: 'point', xValue: maxLabel, yValue: maxVal,
-                backgroundColor: 'rgba(231, 76, 60, 1)', radius: 6
+                backgroundColor: 'rgba(231, 76, 60, 1)', radius: 7
             };
             annotationsConfig.maxLabel = {
                 type: 'label', xValue: maxLabel, yValue: maxVal,
-                yAdjust: -16,
-                backgroundColor: 'rgba(231, 76, 60, 0.85)',
+                yAdjust: -18,
+                backgroundColor: 'rgba(231, 76, 60, 0.9)',
                 content: `最高 ${maxVal}人`,
-                color: '#fff', font: { size: 11, weight: 'bold' },
-                padding: 4, borderRadius: 4
+                color: '#fff', font: { size: labelFontSize + 1, weight: 'bold' },
+                padding: 6, borderRadius: 5
             };
         }
 
         if (minLabel !== null && minLabel !== maxLabel) {
             annotationsConfig.minPoint = {
                 type: 'point', xValue: minLabel, yValue: minVal,
-                backgroundColor: 'rgba(46, 184, 92, 1)', radius: 6
+                backgroundColor: 'rgba(46, 184, 92, 1)', radius: 7
             };
             annotationsConfig.minLabel = {
                 type: 'label', xValue: minLabel, yValue: minVal,
-                yAdjust: 16,
-                backgroundColor: 'rgba(46, 184, 92, 0.85)',
+                yAdjust: 18,
+                backgroundColor: 'rgba(46, 184, 92, 0.9)',
                 content: `最低 ${minVal}人`,
-                color: '#fff', font: { size: 11, weight: 'bold' },
-                padding: 4, borderRadius: 4
+                color: '#fff', font: { size: labelFontSize + 1, weight: 'bold' },
+                padding: 6, borderRadius: 5
             };
         }
 
@@ -522,8 +528,8 @@
                     data: data.todayData,
                     borderColor: 'rgba(12, 180, 181, 1)',
                     backgroundColor: 'rgba(12, 180, 181, 0.2)',
-                    borderWidth: 3,
-                    pointRadius: 4,
+                    borderWidth: 3.5,
+                    pointRadius: 5,
                     fill: false,
                     tension: 0.3
                 }]
@@ -533,16 +539,19 @@
                 maintainAspectRatio: false,
                 animation: { duration: 0 },
                 plugins: {
+                    legend: {
+                        labels: { font: { size: titleFontSize, weight: 'bold' } }
+                    },
                     tooltip: tooltipFontConfig,
                     annotation: { annotations: annotationsConfig }
                 },
                 scales: { 
-                    x: { ticks: { font: { size: 13, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    x: { ticks: { font: { size: tickFontSize, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
-                        ticks: { font: { size: 13, weight: 'bold' } }, 
+                        ticks: { font: { size: tickFontSize, weight: 'bold' } }, 
                         beginAtZero: true, 
                         max: CAPACITY,
-                        title: { display: true, text: '平均人數', font: { size: 14, weight: 'bold' } } 
+                        title: { display: true, text: '平均人數', font: { size: titleFontSize, weight: 'bold' } } 
                     } 
                 }
             }
@@ -563,17 +572,17 @@
                         label: '平均人數',
                         data: data.dayAvgs,
                         backgroundColor: getBarColors(data.dayAvgs),
-                        borderRadius: 5,
+                        borderRadius: 6,
                         order: 2
                     },
                     {
                         type: 'line',
                         label: '最高人數 (Peak)',
                         data: data.dayMaxsOrdered,
-                        borderColor: 'rgba(231, 76, 60, 0.8)',
+                        borderColor: 'rgba(231, 76, 60, 0.85)',
                         backgroundColor: 'rgba(231, 76, 60, 1)',
-                        borderWidth: 2,
-                        pointRadius: 5,
+                        borderWidth: 2.5,
+                        pointRadius: 6,
                         pointStyle: 'rectRot',
                         fill: false,
                         order: 1
@@ -588,17 +597,17 @@
                     legend: { 
                         display: true, 
                         position: 'top',
-                        labels: { font: { size: 13, weight: 'bold' } }
+                        labels: { font: { size: titleFontSize, weight: 'bold' } }
                     },
                     tooltip: tooltipFontConfig
                 }, 
                 scales: { 
-                    x: { ticks: { font: { size: 13, weight: 'bold' } } },
+                    x: { ticks: { font: { size: tickFontSize, weight: 'bold' } } },
                     y: { 
-                        ticks: { font: { size: 13, weight: 'bold' } }, 
+                        ticks: { font: { size: tickFontSize, weight: 'bold' } }, 
                         beginAtZero: true,
                         max: CAPACITY, 
-                        title: { display: true, text: '人數', font: { size: 14, weight: 'bold' } } 
+                        title: { display: true, text: '人數', font: { size: titleFontSize, weight: 'bold' } } 
                     } 
                 }
             }
@@ -614,7 +623,7 @@
                     label: '平均人數',
                     data: data.hourAvgs,
                     backgroundColor: getBarColors(data.hourAvgs),
-                    borderRadius: 5
+                    borderRadius: 6
                 }]
             },
             options: {
@@ -626,11 +635,11 @@
                     tooltip: tooltipFontConfig
                 },
                 scales: { 
-                    x: { ticks: { font: { size: 13, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    x: { ticks: { font: { size: tickFontSize, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
-                        ticks: { font: { size: 13, weight: 'bold' } }, 
+                        ticks: { font: { size: tickFontSize, weight: 'bold' } }, 
                         beginAtZero: true, 
-                        title: { display: true, text: '平均人數', font: { size: 14, weight: 'bold' } } 
+                        title: { display: true, text: '平均人數', font: { size: titleFontSize, weight: 'bold' } } 
                     } 
                 }
             }
@@ -639,10 +648,13 @@
         console.log(`圖表已於 ${new Date().toLocaleTimeString()} 重新計算並更新`);
     }
 
+    window.addEventListener('resize', () => {
+        if (todayChartInstance) renderCharts();
+    });
+
     renderCharts();
     setInterval(renderCharts, 300000); 
 
-    // 註冊 PWA Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
