@@ -83,10 +83,17 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.04); 
             border-top: 8px solid #0cb4b5; 
         }
-        .live-title { 
-            font-size: clamp(1.8rem, 5vw, 2.8rem); 
+        .live-title-main { 
+            font-size: clamp(2rem, 5.8vw, 3.2rem); 
             color: #1e293b; 
-            margin: 0 0 12px 0; 
+            margin: 0 0 6px 0; 
+            font-weight: 900; 
+            line-height: 1.2;
+        }
+        .live-title-sub { 
+            font-size: clamp(1.6rem, 4.6vw, 2.4rem); 
+            color: #0cb4b5; 
+            margin: 0 0 14px 0; 
             font-weight: 900; 
             line-height: 1.2;
         }
@@ -206,7 +213,8 @@
 
     <!-- 實時狀態大字報 -->
     <div class="live-status">
-        <div class="live-title">🏃‍♂️ 鼓山運動中心 - 健身房人流分析</div>
+        <div class="live-title-main">🏃‍♂️ 鼓山運動中心</div>
+        <div class="live-title-sub">健身房人流分析</div>
         <div class="live-subtitle">現在人數 / 容留人數</div>
         <div class="live-numbers">
             <span id="currentPeople">--</span> / 70 
@@ -255,7 +263,6 @@
 
     const CAPACITY = 70;
 
-    // 💡 10 秒倒數與自動重整邏輯
     let timeLeft = 10;
     const countdownEl = document.getElementById('countdown');
     setInterval(() => {
@@ -558,7 +565,7 @@
             };
             annotationsConfig.minLabel = {
                 type: 'label', xValue: minLabel, yValue: minVal,
-                yAdjust: 18,
+                yAdjust: 16,
                 backgroundColor: 'rgba(46, 184, 92, 0.9)',
                 content: `最低 ${minVal}人`,
                 color: '#fff', font: { size: labelFontSize + 1, weight: 'bold' },
