@@ -33,40 +33,9 @@
             background-color: #f4f7f6; 
             margin: 0; 
             padding: clamp(10px, 3vw, 24px); 
-            overscroll-behavior-y: contain; /* 避免瀏覽器原生彈跳干擾自訂下拉 */
+            overscroll-behavior-y: contain; 
         }
 
-        /* 下拉重新整理提示條 */
-        #ptr-indicator {
-            position: fixed;
-            top: -60px;
-            left: 0;
-            width: 100%;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            font-weight: bold;
-            color: #0cb4b5;
-            z-index: 9999;
-            transition: top 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
-            pointer-events: none;
-        }
-        #ptr-indicator .ptr-box {
-            background: white;
-            padding: 8px 18px;
-            border-radius: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        #ptr-spinner {
-            display: inline-block;
-            transition: transform 0.2s;
-        }
-        
         .container { 
             max-width: 1000px; 
             margin: 0 auto; 
@@ -76,6 +45,38 @@
             box-shadow: 0 6px 18px rgba(0,0,0,0.08); 
             position: relative;
             transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        /* 💡 緊貼在主卡片正上方的提示條 */
+        #ptr-indicator {
+            position: absolute;
+            top: -46px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0cb4b5;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #ptr-indicator .ptr-box {
+            background: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        #ptr-spinner {
+            display: inline-block;
+            transition: transform 0.15s linear;
         }
         
         /* 實時狀態大字報設計 */
@@ -222,15 +223,15 @@
 </head>
 <body>
 
-<!-- 下拉重新整理提示條 -->
-<div id="ptr-indicator">
-    <div class="ptr-box">
-        <span id="ptr-spinner">🔄</span>
-        <span id="ptr-text">下拉重新整理</span>
-    </div>
-</div>
-
 <div class="container" id="mainContainer">
+    <!-- 下拉重新整理提示條 (放在 container 內部最上方) -->
+    <div id="ptr-indicator">
+        <div class="ptr-box">
+            <span id="ptr-spinner">🔄</span>
+            <span id="ptr-text">下拉更新</span>
+        </div>
+    </div>
+
     <!-- 實時狀態大字報 -->
     <div class="live-status">
         <div class="live-title-main">鼓山運動中心</div>
@@ -285,18 +286,18 @@
 
     const CAPACITY = 70;
 
-    // 手機下拉重新整理 (Pull-to-Refresh) 邏輯
+    // 💡 優化後的緊密型手機下拉重新整理
     let startY = 0;
     let currentY = 0;
     let isPulling = false;
-    const ptrThreshold = 75; // 下拉觸發門檻 (像素)
+    const ptrThreshold = 50; // 下拉 50px 即觸發，手感輕快
     const ptrIndicator = document.getElementById('ptr-indicator');
     const ptrText = document.getElementById('ptr-text');
     const ptrSpinner = document.getElementById('ptr-spinner');
     const mainContainer = document.getElementById('mainContainer');
 
     window.addEventListener('touchstart', (e) => {
-        if (window.scrollY === 0) {
+        if (window.scrollY <= 0) {
             startY = e.touches[0].pageY;
             isPulling = true;
         }
@@ -308,17 +309,23 @@
         let diff = currentY - startY;
 
         if (diff > 0) {
-            let moveY = Math.min(diff * 0.45, 90); // 阻尼手感
-            ptrIndicator.style.top = `${moveY - 45}px`;
+            let moveY = Math.min(diff * 0.4, 65); // 緊密阻尼感
             mainContainer.style.transform = `translateY(${moveY}px)`;
             
+            // 下拉超過 15px 才淡入顯示提示框
+            if (moveY > 15) {
+                ptrIndicator.style.opacity = '1';
+            } else {
+                ptrIndicator.style.opacity = '0';
+            }
+
             let rotation = (diff / ptrThreshold) * 180;
             ptrSpinner.style.transform = `rotate(${rotation}deg)`;
 
             if (diff >= ptrThreshold) {
                 ptrText.innerText = '放開立即更新';
             } else {
-                ptrText.innerText = '下拉重新整理';
+                ptrText.innerText = '下拉更新';
             }
         }
     }, { passive: true });
@@ -328,14 +335,14 @@
         let diff = currentY - startY;
         isPulling = false;
 
-        if (diff >= ptrThreshold && window.scrollY === 0) {
-            ptrText.innerText = '正在更新數據...';
-            ptrIndicator.style.top = '15px';
+        if (diff >= ptrThreshold && window.scrollY <= 0) {
+            ptrText.innerText = '更新中...';
+            ptrSpinner.style.transform = 'rotate(360deg)';
             setTimeout(() => {
                 location.reload();
-            }, 300);
+            }, 200);
         } else {
-            ptrIndicator.style.top = '-60px';
+            ptrIndicator.style.opacity = '0';
             mainContainer.style.transform = 'translateY(0)';
         }
         startY = 0;
