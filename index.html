@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     
-    <!-- 👇 Google Analytics (GA4) 追蹤代碼 👇 -->
+    <!-- Google Analytics (GA4) 追蹤代碼 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-BDLCXW3CWQ"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -25,7 +25,6 @@
 
       gtag('config', 'G-BDLCXW3CWQ');
     </script>
-    <!-- 👆 Google Analytics (GA4) 追蹤代碼 👆 -->
 
     <style>
         * { box-sizing: border-box; }
@@ -34,6 +33,38 @@
             background-color: #f4f7f6; 
             margin: 0; 
             padding: clamp(10px, 3vw, 24px); 
+            overscroll-behavior-y: contain; /* 避免瀏覽器原生彈跳干擾自訂下拉 */
+        }
+
+        /* 下拉重新整理提示條 */
+        #ptr-indicator {
+            position: fixed;
+            top: -60px;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #0cb4b5;
+            z-index: 9999;
+            transition: top 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+            pointer-events: none;
+        }
+        #ptr-indicator .ptr-box {
+            background: white;
+            padding: 8px 18px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #ptr-spinner {
+            display: inline-block;
+            transition: transform 0.2s;
         }
         
         .container { 
@@ -44,36 +75,10 @@
             border-radius: 16px; 
             box-shadow: 0 6px 18px rgba(0,0,0,0.08); 
             position: relative;
-        }
-
-        /* 倒數計時跳動徽章 */
-        .refresh-bar {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 10px;
-        }
-        .refresh-badge {
-            display: inline-flex;
-            align-items: center;
-            background: #f1f5f9;
-            color: #475569;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: clamp(0.95rem, 2.4vw, 1.15rem);
-            font-weight: 700;
-            border: 1px solid #e2e8f0;
-        }
-        .countdown-num {
-            color: #0cb4b5;
-            font-size: 1.2em;
-            font-weight: 900;
-            margin: 0 4px;
-            display: inline-block;
-            min-width: 16px;
-            text-align: center;
+            transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
         
-        /* 實時狀態大字報設計 - 字體全面加大放大 */
+        /* 實時狀態大字報設計 */
         .live-status { 
             text-align: center; 
             padding: clamp(24px, 5vw, 42px) 15px; 
@@ -92,7 +97,7 @@
         }
         .live-title-sub { 
             font-size: clamp(2rem, 5.6vw, 3.2rem); 
-            color: #1e293b; /* 黑色 */
+            color: #1e293b; 
             margin: 0 0 14px 0; 
             font-weight: 900; 
             line-height: 1.2;
@@ -137,7 +142,6 @@
             transition: all 0.3s ease;
         }
         
-        /* 預測時間主動斷行與大字體設計 */
         .pred-time-label { 
             font-size: clamp(1.15rem, 3.4vw, 1.55rem); 
             color: #334155; 
@@ -218,14 +222,15 @@
 </head>
 <body>
 
-<div class="container">
-    <!-- 10 秒倒數重整徽章 -->
-    <div class="refresh-bar">
-        <div class="refresh-badge">
-            🔄 <span class="countdown-num" id="countdown">10</span> 秒後自動更新
-        </div>
+<!-- 下拉重新整理提示條 -->
+<div id="ptr-indicator">
+    <div class="ptr-box">
+        <span id="ptr-spinner">🔄</span>
+        <span id="ptr-text">下拉重新整理</span>
     </div>
+</div>
 
+<div class="container" id="mainContainer">
     <!-- 實時狀態大字報 -->
     <div class="live-status">
         <div class="live-title-main">鼓山運動中心</div>
@@ -280,17 +285,62 @@
 
     const CAPACITY = 70;
 
-    let timeLeft = 10;
-    const countdownEl = document.getElementById('countdown');
-    setInterval(() => {
-        timeLeft--;
-        if (timeLeft >= 0) {
-            countdownEl.innerText = timeLeft;
+    // 手機下拉重新整理 (Pull-to-Refresh) 邏輯
+    let startY = 0;
+    let currentY = 0;
+    let isPulling = false;
+    const ptrThreshold = 75; // 下拉觸發門檻 (像素)
+    const ptrIndicator = document.getElementById('ptr-indicator');
+    const ptrText = document.getElementById('ptr-text');
+    const ptrSpinner = document.getElementById('ptr-spinner');
+    const mainContainer = document.getElementById('mainContainer');
+
+    window.addEventListener('touchstart', (e) => {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].pageY;
+            isPulling = true;
         }
-        if (timeLeft <= 0) {
-            location.reload();
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isPulling || window.scrollY > 0) return;
+        currentY = e.touches[0].pageY;
+        let diff = currentY - startY;
+
+        if (diff > 0) {
+            let moveY = Math.min(diff * 0.45, 90); // 阻尼手感
+            ptrIndicator.style.top = `${moveY - 45}px`;
+            mainContainer.style.transform = `translateY(${moveY}px)`;
+            
+            let rotation = (diff / ptrThreshold) * 180;
+            ptrSpinner.style.transform = `rotate(${rotation}deg)`;
+
+            if (diff >= ptrThreshold) {
+                ptrText.innerText = '放開立即更新';
+            } else {
+                ptrText.innerText = '下拉重新整理';
+            }
         }
-    }, 1000);
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+        if (!isPulling) return;
+        let diff = currentY - startY;
+        isPulling = false;
+
+        if (diff >= ptrThreshold && window.scrollY === 0) {
+            ptrText.innerText = '正在更新數據...';
+            ptrIndicator.style.top = '15px';
+            setTimeout(() => {
+                location.reload();
+            }, 300);
+        } else {
+            ptrIndicator.style.top = '-60px';
+            mainContainer.style.transform = 'translateY(0)';
+        }
+        startY = 0;
+        currentY = 0;
+    });
 
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif';
 
