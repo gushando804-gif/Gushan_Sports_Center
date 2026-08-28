@@ -47,7 +47,7 @@
             transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
 
-        /* 💡 緊貼在主卡片正上方的提示條 */
+        /* 緊貼主卡片上方的下拉提示 */
         #ptr-indicator {
             position: absolute;
             top: -46px;
@@ -213,6 +213,7 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 45px;
+            scroll-behavior: smooth;
         }
         .scrollable-chart-inner {
             position: relative;
@@ -224,7 +225,7 @@
 <body>
 
 <div class="container" id="mainContainer">
-    <!-- 下拉重新整理提示條 (放在 container 內部最上方) -->
+    <!-- 下拉重新整理提示條 -->
     <div id="ptr-indicator">
         <div class="ptr-box">
             <span id="ptr-spinner">🔄</span>
@@ -286,11 +287,11 @@
 
     const CAPACITY = 70;
 
-    // 💡 優化後的緊密型手機下拉重新整理
+    // 手機下拉重新整理
     let startY = 0;
     let currentY = 0;
     let isPulling = false;
-    const ptrThreshold = 50; // 下拉 50px 即觸發，手感輕快
+    const ptrThreshold = 50;
     const ptrIndicator = document.getElementById('ptr-indicator');
     const ptrText = document.getElementById('ptr-text');
     const ptrSpinner = document.getElementById('ptr-spinner');
@@ -309,10 +310,9 @@
         let diff = currentY - startY;
 
         if (diff > 0) {
-            let moveY = Math.min(diff * 0.4, 65); // 緊密阻尼感
+            let moveY = Math.min(diff * 0.4, 65);
             mainContainer.style.transform = `translateY(${moveY}px)`;
             
-            // 下拉超過 15px 才淡入顯示提示框
             if (moveY > 15) {
                 ptrIndicator.style.opacity = '1';
             } else {
@@ -696,8 +696,27 @@
             }
         });
 
+        // 💡 預設靠左歸零在 07:00
         const wrapper = document.getElementById('todayChartWrapper');
-        wrapper.scrollLeft = wrapper.scrollWidth;
+        wrapper.scrollLeft = 0;
+
+        // 💡 自動滑動監聽器：當滑動到此圖表時，平滑右滑至最新時間點
+        let hasScrolled = false;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !hasScrolled) {
+                    hasScrolled = true;
+                    setTimeout(() => {
+                        wrapper.scrollTo({
+                            left: wrapper.scrollWidth,
+                            behavior: 'smooth'
+                        });
+                    }, 300);
+                }
+            });
+        }, { threshold: 0.35 });
+
+        observer.observe(wrapper);
 
         if (dayChartInstance) dayChartInstance.destroy();
         const ctxDay = document.getElementById('dayChart').getContext('2d');
