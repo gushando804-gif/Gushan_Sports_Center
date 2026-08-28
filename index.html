@@ -84,15 +84,15 @@
             border-top: 8px solid #0cb4b5; 
         }
         .live-title-main { 
-            font-size: clamp(3rem, 6.4vw, 4rem); 
+            font-size: clamp(2rem, 5.8vw, 3.2rem); 
             color: #1e293b; 
             margin: 0 0 6px 0; 
             font-weight: 900; 
             line-height: 1.2;
         }
         .live-title-sub { 
-            font-size: clamp(2rem, 5vw, 3rem); 
-            color: #1e293b; 
+            font-size: clamp(1.6rem, 4.6vw, 2.4rem); 
+            color: #0cb4b5; 
             margin: 0 0 14px 0; 
             font-weight: 900; 
             line-height: 1.2;
@@ -115,6 +115,11 @@
             color: #64748b; 
             font-weight: 700; 
         }
+
+        /* 依人流等級動態呈現文字色彩 */
+        .text-level-green { color: #087f5b !important; }
+        .text-level-yellow { color: #d9480f !important; }
+        .text-level-red { color: #c92a2a !important; }
         .text-danger { color: #e74c3c !important; }
 
         /* 未來一小時預測卡片 */
@@ -215,7 +220,7 @@
     <div class="live-status">
         <div class="live-title-main">鼓山運動中心</div>
         <div class="live-title-sub">健身房人流分析</div>
-        <div class="live-subtitle">現在人數/容留人數</div>
+        <div class="live-subtitle">現在人數 / 容留人數</div>
         <div class="live-numbers">
             <span id="currentPeople">--</span> / 70 
             <span class="live-percentage" id="currentPercent">( --% )</span>
@@ -307,9 +312,9 @@
     }
 
     function getCrowdednessStatus(people) {
-        if (people <= 25) return { text: '舒適', cardClass: 'card-green' };
-        if (people <= 50) return { text: '適中', cardClass: 'card-yellow' };
-        return { text: '擁擠', cardClass: 'card-red' };
+        if (people <= 25) return { text: '舒適', cardClass: 'card-green', textClass: 'text-level-green' };
+        if (people <= 50) return { text: '適中', cardClass: 'card-yellow', textClass: 'text-level-yellow' };
+        return { text: '擁擠', cardClass: 'card-red', textClass: 'text-level-red' };
     }
 
     function getHalfHourKey(dateObj) {
@@ -409,16 +414,23 @@
         const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
         if (latestPeople !== '--') {
-            document.getElementById('currentPeople').innerText = latestPeople;
+            const currentPeopleElem = document.getElementById('currentPeople');
+            currentPeopleElem.innerText = latestPeople;
+            
+            // 依人流等級動態賦予顏色 (綠 / 黃 / 紅)
+            currentPeopleElem.classList.remove('text-level-green', 'text-level-yellow', 'text-level-red');
+            const currentStatus = getCrowdednessStatus(latestPeople);
+            currentPeopleElem.classList.add(currentStatus.textClass);
+
             let percent = Math.round((latestPeople / CAPACITY) * 100);
             const percentElement = document.getElementById('currentPercent');
             percentElement.innerText = `(${percent}%)`;
             
             if (percent >= 100) {
-                document.getElementById('currentPeople').classList.add('text-danger');
+                currentPeopleElem.classList.add('text-danger');
                 percentElement.classList.add('text-danger');
             } else {
-                document.getElementById('currentPeople').classList.remove('text-danger');
+                currentPeopleElem.classList.remove('text-danger');
                 percentElement.classList.remove('text-danger');
             }
 
