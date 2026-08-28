@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>鼓山運動中心<br>健身房人流分析</title>
+    <title>鼓山運動中心 - 健身房人流分析</title>
     
     <!-- PWA 支援設定 -->
     <link rel="manifest" href="manifest.json">
@@ -29,7 +29,7 @@
     <!-- 👆 Google Analytics (GA4) 追蹤代碼 👆 -->
 
     <style>
-        /* 💡 這裡已經換成萬用跨平台字型 CSS */
+        /* 💡 萬用跨平台字型 CSS */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif; 
             background-color: #f4f7f6; 
@@ -130,7 +130,7 @@
 
     const CAPACITY = 70; // 設定容留上限
 
-    // 💡 讓圖表內的字型也套用萬用字型
+    // 讓圖表內的字型也套用萬用字型
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif';
 
     const tooltipFontConfig = {
@@ -212,7 +212,8 @@
                     const dayOfWeek = recordTime.getDay();
 
                     if (timeStr.startsWith(todayDateString)) {
-                        if (hour >= 6 && hour <= 22) {
+                        // 💡 改為從 07:00 開始
+                        if (hour >= 7 && hour <= 22) {
                             if (!todayHalfHourMap[timeKey]) {
                                 todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
                             }
@@ -222,7 +223,8 @@
                     }
 
                     if (recordTime >= oneMonthAgo) {
-                        if (hour >= 6 && hour <= 22) {
+                        // 💡 改為從 07:00 開始
+                        if (hour >= 7 && hour <= 22) {
                             daySums[dayOfWeek] += validPeople;
                             dayCounts[dayOfWeek]++;
 
@@ -287,7 +289,8 @@
 
         const hourLabels = [];
         const hourAvgs = [];
-        for (let i = 6; i <= 22; i++) {
+        // 💡 迴圈改為從 7 點開始繪製
+        for (let i = 7; i <= 22; i++) {
             hourLabels.push(i.toString().padStart(2, '0') + ':00');
             hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
         }
@@ -327,7 +330,8 @@
 
     function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
         const hour = targetTime.getHours();
-        if (hour < 6 || hour > 22) return -1; // 已打烊
+        // 💡 判斷打烊時間同步改為 7 點前
+        if (hour < 7 || hour > 22) return -1; 
 
         const key = getHalfHourKey(targetTime);
         const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
