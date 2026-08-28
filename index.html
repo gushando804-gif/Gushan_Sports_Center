@@ -23,43 +23,127 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      // ⚠️ 請將下方的 G-XXXXXXXXXX 換成您自己的 GA4 評估 ID
       gtag('config', 'G-BDLCXW3CWQ');
     </script>
     <!-- 👆 Google Analytics (GA4) 追蹤代碼 👆 -->
 
     <style>
-        /* 💡 萬用跨平台字型 CSS */
+        * { box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif; 
             background-color: #f4f7f6; 
             margin: 0; 
-            padding: 20px; 
+            padding: clamp(10px, 3vw, 20px); 
         }
         
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: clamp(15px, 3vw, 25px); 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        }
         
-        /* 實時狀態大字報設計 */
-        .live-status { text-align: center; padding: 30px; background: #fff; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #0cb4b5; }
-        .live-title { font-size: 1.5rem; color: #333; margin: 0 0 10px 0; font-weight: bold; }
-        .live-subtitle { font-size: 1.2rem; color: #555; font-weight: bold; margin-bottom: 15px; }
-        .live-numbers { font-size: 4rem; font-weight: bold; color: #333; margin: 0; }
-        .live-percentage { font-size: 2rem; color: #888; font-weight: normal; }
+        /* 實時狀態大字報設計 (字體自動縮放至最大) */
+        .live-status { 
+            text-align: center; 
+            padding: clamp(20px, 4vw, 35px) 15px; 
+            background: #fff; 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); 
+            border-top: 6px solid #0cb4b5; 
+        }
+        .live-title { 
+            font-size: clamp(1.2rem, 3.5vw, 1.8rem); 
+            color: #222; 
+            margin: 0 0 8px 0; 
+            font-weight: 800; 
+        }
+        .live-subtitle { 
+            font-size: clamp(1rem, 2.8vw, 1.3rem); 
+            color: #666; 
+            font-weight: bold; 
+            margin-bottom: 12px; 
+        }
+        .live-numbers { 
+            font-size: clamp(3.2rem, 11vw, 5rem); 
+            font-weight: 900; 
+            color: #1e293b; 
+            margin: 0; 
+            line-height: 1.1; 
+        }
+        .live-percentage { 
+            font-size: clamp(1.5rem, 5vw, 2.4rem); 
+            color: #64748b; 
+            font-weight: 600; 
+        }
         .text-danger { color: #e74c3c !important; }
 
-        /* 未來一小時預測區塊樣式 */
-        .prediction-box { display: flex; justify-content: space-around; background: #f8fafc; padding: 18px; border-radius: 10px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
-        .prediction-item { text-align: center; flex: 1; border-right: 1px solid #e2e8f0; }
-        .prediction-item:last-child { border-right: none; }
-        .pred-time { font-size: 0.95rem; color: #333; font-weight: bold; margin-bottom: 5px; }
-        .pred-status { font-size: 1.25rem; font-weight: bold; color: #1e293b; }
-        .pred-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.9rem; color: #fff; margin-top: 5px; }
-        .pred-factors { font-size: 0.8rem; color: #0cb4b5; margin-top: 4px; font-weight: 500; }
-        .bg-green { background-color: #2eb85c; }
-        .bg-yellow { background-color: #f9b115; color: #333; }
-        .bg-red { background-color: #e55353; }
+        /* 未來一小時預測卡片：直接以底框色與大字體展示舒適狀態 */
+        .prediction-box { 
+            display: flex; 
+            gap: 15px; 
+            margin-bottom: 30px; 
+        }
+        .prediction-item { 
+            flex: 1; 
+            text-align: center; 
+            padding: clamp(14px, 3vw, 22px) 10px; 
+            border-radius: 12px; 
+            border: 2px solid transparent; 
+            transition: all 0.3s ease;
+        }
+        .pred-time { 
+            font-size: clamp(0.95rem, 2.6vw, 1.25rem); 
+            color: #334155; 
+            font-weight: 800; 
+            margin-bottom: 8px; 
+        }
+        .pred-status { 
+            font-size: clamp(1.4rem, 4.2vw, 2rem); 
+            font-weight: 900; 
+            line-height: 1.2;
+        }
+        .pred-factors { 
+            font-size: clamp(0.75rem, 2vw, 0.95rem); 
+            color: #0cb4b5; 
+            margin-top: 6px; 
+            font-weight: bold; 
+        }
 
-        h2 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 40px; font-size: 1.5rem; font-weight: bold; }
+        /* 舒適度底框樣式 (舒適/適中/擁擠) */
+        .card-green {
+            background-color: #ebfbee;
+            border-color: #63e6be;
+            color: #087f5b;
+        }
+        .card-yellow {
+            background-color: #fff9db;
+            border-color: #ffe066;
+            color: #d9480f;
+        }
+        .card-red {
+            background-color: #ffe3e3;
+            border-color: #ff8787;
+            color: #c92a2a;
+        }
+        .card-default {
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+            color: #475569;
+        }
+
+        h2 { 
+            text-align: center; 
+            color: #333; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 10px; 
+            margin-top: 35px; 
+            font-size: clamp(1.2rem, 3.2vw, 1.5rem); 
+            font-weight: bold; 
+        }
         .chart-container { position: relative; height: 45vh; width: 100%; margin-bottom: 40px; }
 
         .scrollable-chart-wrapper {
@@ -71,7 +155,7 @@
         .scrollable-chart-inner {
             position: relative;
             height: 45vh;
-            min-width: 700px; 
+            min-width: 650px; 
         }
     </style>
 </head>
@@ -88,23 +172,20 @@
         </div>
     </div>
 
-    <!-- 未來一小時擁擠度預測卡片 -->
+    <!-- 未來一小時擁擠度預測卡片 (底框直接套色) -->
     <div class="prediction-box">
-        <div class="prediction-item">
+        <div class="prediction-item card-default" id="pred30Card">
             <div class="pred-time">🔮 預測30分鐘後 (<span id="pred30Time">--:--</span>)</div>
             <div class="pred-status" id="pred30Text">計算中...</div>
-            <div id="pred30Badge" class="pred-badge" style="display:none;">--</div>
             <div id="pred30Factor" class="pred-factors"></div>
         </div>
-        <div class="prediction-item">
+        <div class="prediction-item card-default" id="pred60Card">
             <div class="pred-time">🔮 預測60分鐘後 (<span id="pred60Time">--:--</span>)</div>
             <div class="pred-status" id="pred60Text">計算中...</div>
-            <div id="pred60Badge" class="pred-badge" style="display:none;">--</div>
             <div id="pred60Factor" class="pred-factors"></div>
         </div>
     </div>
 
-    <!-- 更新為專業標題 -->
     <h2>📈 今日分時人流趨勢</h2>
     <div class="scrollable-chart-wrapper" id="todayChartWrapper">
         <div class="scrollable-chart-inner">
@@ -130,7 +211,6 @@
 
     const CAPACITY = 70; // 設定容留上限
 
-    // 讓圖表內的字型也套用萬用字型
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif';
 
     const tooltipFontConfig = {
@@ -139,7 +219,6 @@
         padding: 10
     };
 
-    // 國定假日判定清單 (格式: MM-DD)
     const TAIWAN_HOLIDAYS = [
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
@@ -157,12 +236,11 @@
     }
 
     function getCrowdednessStatus(people) {
-        if (people <= 25) return { text: '舒適', class: 'bg-green' };
-        if (people <= 50) return { text: '適中', class: 'bg-yellow' };
-        return { text: '擁擠', class: 'bg-red' };
+        if (people <= 25) return { text: '舒適', cardClass: 'card-green' };
+        if (people <= 50) return { text: '適中', cardClass: 'card-yellow' };
+        return { text: '擁擠', cardClass: 'card-red' };
     }
 
-    // 將 Date 物件精準對齊至半小時 Key (例如 16:25 -> "16:30")
     function getHalfHourKey(dateObj) {
         const h = dateObj.getHours();
         const m = dateObj.getMinutes();
@@ -212,7 +290,6 @@
                     const dayOfWeek = recordTime.getDay();
 
                     if (timeStr.startsWith(todayDateString)) {
-                        // 💡 改為從 07:00 開始
                         if (hour >= 7 && hour <= 22) {
                             if (!todayHalfHourMap[timeKey]) {
                                 todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
@@ -223,7 +300,6 @@
                     }
 
                     if (recordTime >= oneMonthAgo) {
-                        // 💡 改為從 07:00 開始
                         if (hour >= 7 && hour <= 22) {
                             daySums[dayOfWeek] += validPeople;
                             dayCounts[dayOfWeek]++;
@@ -284,12 +360,10 @@
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
         const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
-        
         const dayMaxsOrdered = dayOrder.map(d => dayMaxs[d]);
 
         const hourLabels = [];
         const hourAvgs = [];
-        // 💡 迴圈改為從 7 點開始繪製
         for (let i = 7; i <= 22; i++) {
             hourLabels.push(i.toString().padStart(2, '0') + ':00');
             hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
@@ -315,23 +389,19 @@
 
         const factorText = isHoliday ? "🎉 國定假日模式" : "";
 
-        // 1. 計算 30 分鐘後預測人數
         const time30 = new Date(nowTime.getTime() + 30 * 60000);
         const pred30People = getSmoothedPred(time30, activeSums, activeCounts, currentHistAvg, currentPeople);
 
-        // 2. 計算 60 分鐘後預測人數 (以 30 分鐘預估值作二次平滑，避免劇烈震盪)
         const time60 = new Date(nowTime.getTime() + 60 * 60000);
         const pred60People = getSmoothedPred(time60, activeSums, activeCounts, currentHistAvg, pred30People);
 
-        // 繪製 UI
-        renderPredUI(time30, 'pred30Time', 'pred30Text', 'pred30Badge', 'pred30Factor', pred30People, factorText);
-        renderPredUI(time60, 'pred60Time', 'pred60Text', 'pred60Badge', 'pred60Factor', pred60People, factorText);
+        renderPredUI(time30, 'pred30Card', 'pred30Time', 'pred30Text', 'pred30Factor', pred30People, factorText);
+        renderPredUI(time60, 'pred60Card', 'pred60Time', 'pred60Text', 'pred60Factor', pred60People, factorText);
     }
 
     function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
         const hour = targetTime.getHours();
-        // 💡 判斷打烊時間同步改為 7 點前
-        if (hour < 7 || hour > 22) return -1; 
+        if (hour < 7 || hour > 22) return -1;
 
         const key = getHalfHourKey(targetTime);
         const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
@@ -339,32 +409,31 @@
             : basePeople;
 
         const trendDelta = futureHistAvg - baseHistAvg;
-        
         let pred = Math.round(basePeople + (trendDelta * 0.4));
         return Math.max(0, Math.min(CAPACITY, pred));
     }
 
-    function renderPredUI(futureTime, timeElemId, textElemId, badgeElemId, factorElemId, predPeople, factorText) {
+    function renderPredUI(futureTime, cardElemId, timeElemId, textElemId, factorElemId, predPeople, factorText) {
         const hour = futureTime.getHours();
         const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
 
         document.getElementById(timeElemId).innerText = timeFormatted;
+        const cardElem = document.getElementById(cardElemId);
 
         if (predPeople === -1) {
             document.getElementById(textElemId).innerText = '已打烊';
-            document.getElementById(badgeElemId).style.display = 'none';
+            cardElem.className = 'prediction-item card-default';
             document.getElementById(factorElemId).innerText = '';
             return;
         }
 
         const statusInfo = getCrowdednessStatus(predPeople);
 
-        document.getElementById(textElemId).innerText = `約 ${predPeople} 人`;
+        // 將「約 XX 人 · 舒適/適中/擁擠」融合為醒目的大字體
+        document.getElementById(textElemId).innerText = `約 ${predPeople} 人 · ${statusInfo.text}`;
         
-        const badgeElem = document.getElementById(badgeElemId);
-        badgeElem.innerText = statusInfo.text;
-        badgeElem.className = `pred-badge ${statusInfo.class}`;
-        badgeElem.style.display = 'inline-block';
+        // 直接將底框套用對應的綠/黃/紅背景樣式
+        cardElem.className = `prediction-item ${statusInfo.cardClass}`;
 
         document.getElementById(factorElemId).innerText = factorText;
     }
@@ -456,12 +525,12 @@
                     annotation: { annotations: annotationsConfig }
                 },
                 scales: { 
-                    x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    x: { ticks: { font: { size: 13, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
-                        ticks: { font: { size: 14, weight: 'bold' } }, 
+                        ticks: { font: { size: 13, weight: 'bold' } }, 
                         beginAtZero: true, 
                         max: CAPACITY,
-                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
+                        title: { display: true, text: '平均人數', font: { size: 14, weight: 'bold' } } 
                     } 
                 }
             }
@@ -507,17 +576,17 @@
                     legend: { 
                         display: true, 
                         position: 'top',
-                        labels: { font: { size: 14, weight: 'bold' } }
+                        labels: { font: { size: 13, weight: 'bold' } }
                     },
                     tooltip: tooltipFontConfig
                 }, 
                 scales: { 
-                    x: { ticks: { font: { size: 14, weight: 'bold' } } },
+                    x: { ticks: { font: { size: 13, weight: 'bold' } } },
                     y: { 
-                        ticks: { font: { size: 14, weight: 'bold' } }, 
+                        ticks: { font: { size: 13, weight: 'bold' } }, 
                         beginAtZero: true,
                         max: CAPACITY, 
-                        title: { display: true, text: '人數', font: { size: 16, weight: 'bold' } } 
+                        title: { display: true, text: '人數', font: { size: 14, weight: 'bold' } } 
                     } 
                 }
             }
@@ -545,11 +614,11 @@
                     tooltip: tooltipFontConfig
                 },
                 scales: { 
-                    x: { ticks: { font: { size: 14, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    x: { ticks: { font: { size: 13, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
                     y: { 
-                        ticks: { font: { size: 14, weight: 'bold' } }, 
+                        ticks: { font: { size: 13, weight: 'bold' } }, 
                         beginAtZero: true, 
-                        title: { display: true, text: '平均人數', font: { size: 16, weight: 'bold' } } 
+                        title: { display: true, text: '平均人數', font: { size: 14, weight: 'bold' } } 
                     } 
                 }
             }
