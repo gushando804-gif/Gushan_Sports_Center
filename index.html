@@ -57,19 +57,19 @@
             align-items: center;
             background: #f1f5f9;
             color: #475569;
-            padding: 6px 14px;
+            padding: 8px 16px;
             border-radius: 20px;
-            font-size: clamp(0.85rem, 2.2vw, 1rem);
+            font-size: clamp(0.95rem, 2.4vw, 1.15rem);
             font-weight: 700;
             border: 1px solid #e2e8f0;
         }
         .countdown-num {
             color: #0cb4b5;
-            font-size: 1.1em;
+            font-size: 1.2em;
             font-weight: 900;
             margin: 0 4px;
             display: inline-block;
-            min-width: 12px;
+            min-width: 16px;
             text-align: center;
         }
         
@@ -84,16 +84,17 @@
             border-top: 8px solid #0cb4b5; 
         }
         .live-title { 
-            font-size: clamp(1.4rem, 4.2vw, 2.2rem); 
+            font-size: clamp(1.8rem, 5vw, 2.8rem); 
             color: #1e293b; 
-            margin: 0 0 10px 0; 
-            font-weight: 800; 
+            margin: 0 0 12px 0; 
+            font-weight: 900; 
+            line-height: 1.2;
         }
         .live-subtitle { 
-            font-size: clamp(1.1rem, 3.2vw, 1.6rem); 
-            color: #64748b; 
-            font-weight: bold; 
-            margin-bottom: 14px; 
+            font-size: clamp(1.3rem, 3.8vw, 2.0rem); 
+            color: #475569; 
+            font-weight: 800; 
+            margin-bottom: 16px; 
         }
         .live-numbers { 
             font-size: clamp(3.8rem, 13vw, 6.2rem); 
@@ -196,10 +197,10 @@
 <body>
 
 <div class="container">
-    <!-- 5 秒倒數重整徽章 -->
+    <!-- 10 秒倒數重整徽章 -->
     <div class="refresh-bar">
         <div class="refresh-badge">
-            🔄 <span class="countdown-num" id="countdown">5</span> 秒後自動更新
+            🔄 <span class="countdown-num" id="countdown">10</span> 秒後自動更新
         </div>
     </div>
 
@@ -254,8 +255,8 @@
 
     const CAPACITY = 70;
 
-    // 💡 5 秒倒數與自動重整邏輯
-    let timeLeft = 5;
+    // 💡 10 秒倒數與自動重整邏輯
+    let timeLeft = 10;
     const countdownEl = document.getElementById('countdown');
     setInterval(() => {
         timeLeft--;
@@ -653,7 +654,7 @@
                     x: { ticks: { font: { size: tickFontSize, weight: 'bold' } } },
                     y: { 
                         ticks: { font: { size: tickFontSize, weight: 'bold' } }, 
-                        beginAtZero: true,
+                        beginAtZero: true, 
                         max: CAPACITY, 
                         title: { display: true, text: '人數', font: { size: titleFontSize, weight: 'bold' } } 
                     } 
