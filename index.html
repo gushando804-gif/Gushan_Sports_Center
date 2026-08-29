@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>鼓山運動中心 - 健身房人流分析</title>
     
+    <!-- PWA 支援設定 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0cb4b5">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <!-- 引入 Chart.js 圖表套件與 Annotation 背景標註套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     
+    <!-- Google Analytics (GA4) 追蹤代碼 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-BDLCXW3CWQ"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -211,8 +214,6 @@
             -webkit-overflow-scrolling: touch;
             margin-bottom: 45px;
         }
-        
-        /* 💡 放大寬度至 1150px，讓時間點間距更寬廣清晰 */
         .scrollable-chart-inner {
             position: relative;
             height: 50vh;
@@ -223,6 +224,7 @@
 <body>
 
 <div class="container" id="mainContainer">
+    <!-- 下拉重新整理提示條 -->
     <div id="ptr-indicator">
         <div class="ptr-box">
             <span id="ptr-spinner">🔄</span>
@@ -230,6 +232,7 @@
         </div>
     </div>
 
+    <!-- 實時狀態大字報 -->
     <div class="live-status">
         <div class="live-title-main">鼓山運動中心</div>
         <div class="live-title-sub">健身房人流分析</div>
@@ -240,6 +243,7 @@
         </div>
     </div>
 
+    <!-- 未來一小時擁擠度預測卡片 -->
     <div class="prediction-box">
         <div class="prediction-item card-default" id="pred30Card">
             <div class="pred-time-label">預測30分鐘後</div>
@@ -388,7 +392,7 @@
         return `${String(h).padStart(2, '0')}:${slot}`;
     }
 
-    // 💡 慢速平滑自訂滾動函式（慢 2 倍，歷時 1800ms）
+    // 慢速平滑自訂滾動函式
     function smoothScrollTo(element, target, duration) {
         const start = element.scrollLeft;
         const change = target - start;
@@ -398,7 +402,6 @@
             const timeElapsed = currentTime - startTime;
             const progress = Math.min(timeElapsed / duration, 1);
             
-            // easeInOutQuad 緩動效果
             const ease = progress < 0.5 
                 ? 2 * progress * progress 
                 : -1 + (4 - 2 * progress) * progress;
@@ -686,14 +689,15 @@
                     borderWidth: 3.5,
                     pointRadius: 5,
                     fill: false,
-                    tension: 0.3
+                    tension: 0.3,
+                    yAxisID: 'y'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: {
-                    padding: { left: 12 }
+                    padding: { left: 12, right: 12 }
                 },
                 animation: { duration: 0 },
                 plugins: {
@@ -705,12 +709,23 @@
                 },
                 scales: { 
                     x: { ticks: { font: { size: tickFontSize, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
+                    // 左側 Y 軸
                     y: { 
+                        position: 'left',
                         ticks: { font: { size: tickFontSize, weight: 'bold' } }, 
                         beginAtZero: true, 
                         max: CAPACITY,
                         title: { display: true, text: '平均人數', font: { size: titleFontSize, weight: 'bold' } } 
-                    } 
+                    },
+                    // 💡 右側 Y 軸 (同步標上人數)
+                    y1: {
+                        position: 'right',
+                        ticks: { font: { size: tickFontSize, weight: 'bold' } },
+                        beginAtZero: true,
+                        max: CAPACITY,
+                        grid: { drawOnChartArea: false }, // 避免網格線重疊變粗
+                        title: { display: true, text: '平均人數', font: { size: titleFontSize, weight: 'bold' } }
+                    }
                 }
             }
         });
@@ -719,7 +734,7 @@
         const wrapper = document.getElementById('todayChartWrapper');
         wrapper.scrollLeft = 0;
 
-        // 💡 慢速 2 倍平滑右滑至當前時間
+        // 慢速 2 倍平滑右滑至當前時間
         let hasScrolled = false;
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -727,7 +742,7 @@
                     hasScrolled = true;
                     setTimeout(() => {
                         const targetLeft = wrapper.scrollWidth - wrapper.clientWidth;
-                        smoothScrollTo(wrapper, targetLeft, 1800); // 歷時 1.8 秒，優雅勻速滑行
+                        smoothScrollTo(wrapper, targetLeft, 1800);
                     }, 400);
                 }
             });
