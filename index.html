@@ -47,6 +47,41 @@
             transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
 
+        /* 懸浮背景音樂控制鈕 */
+        #music-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 99999;
+            background: #0cb4b5;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            box-shadow: 0 4px 14px rgba(12, 180, 181, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        #music-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 隱藏 YouTube 播放器容器 */
+        #yt-audio-player {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
         /* 緊貼主卡片上方的下拉提示 */
         #ptr-indicator {
             position: absolute;
@@ -223,6 +258,10 @@
 </head>
 <body>
 
+<!-- 浮動背景音樂控制鈕 -->
+<button id="music-btn" onclick="toggleMusic()">🎵 播放音樂</button>
+<div id="yt-audio-player"></div>
+
 <div class="container" id="mainContainer">
     <!-- 下拉重新整理提示條 -->
     <div id="ptr-indicator">
@@ -285,6 +324,60 @@
     let hourChartInstance = null;
 
     const CAPACITY = 70;
+
+    // YouTube IFrame API 背景音樂播放控制
+    let ytPlayer = null;
+    let isPlaying = false;
+
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    function onYouTubeIframeAPIReady() {
+        ytPlayer = new YT.Player('yt-audio-player', {
+            height: '1',
+            width: '1',
+            videoId: '3OnnDqH6Wj8',
+            playerVars: {
+                'playsinline': 1,
+                'loop': 1,
+                'playlist': '3OnnDqH6Wj8'
+            },
+            events: {
+                'onReady': onPlayerReady
+            }
+        });
+    }
+
+    function onPlayerReady(event) {
+        event.target.playVideo();
+        const unlockAudio = () => {
+            if (ytPlayer && !isPlaying) {
+                ytPlayer.playVideo();
+                isPlaying = true;
+                document.getElementById('music-btn').innerText = '⏸️ 暫停音樂';
+            }
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('touchstart', unlockAudio);
+        };
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('touchstart', unlockAudio);
+    }
+
+    function toggleMusic() {
+        if (!ytPlayer) return;
+        const btn = document.getElementById('music-btn');
+        if (isPlaying) {
+            ytPlayer.pauseVideo();
+            btn.innerText = '🎵 播放音樂';
+            isPlaying = false;
+        } else {
+            ytPlayer.playVideo();
+            btn.innerText = '⏸️ 暫停音樂';
+            isPlaying = true;
+        }
+    }
 
     // 手機下拉重新整理
     let startY = 0;
@@ -392,7 +485,6 @@
         return `${String(h).padStart(2, '0')}:${slot}`;
     }
 
-    // 慢速平滑自訂滾動函式
     function smoothScrollTo(element, target, duration) {
         const start = element.scrollLeft;
         const change = target - start;
@@ -709,7 +801,6 @@
                 },
                 scales: { 
                     x: { ticks: { font: { size: tickFontSize, weight: 'bold' } }, maxRotation: 45, minRotation: 45 },
-                    // 左側 Y 軸
                     y: { 
                         position: 'left',
                         ticks: { font: { size: tickFontSize, weight: 'bold' } }, 
@@ -717,24 +808,21 @@
                         max: CAPACITY,
                         title: { display: true, text: '平均人數', font: { size: titleFontSize, weight: 'bold' } } 
                     },
-                    // 💡 右側 Y 軸 (同步標上人數)
                     y1: {
                         position: 'right',
                         ticks: { font: { size: tickFontSize, weight: 'bold' } },
                         beginAtZero: true,
                         max: CAPACITY,
-                        grid: { drawOnChartArea: false }, // 避免網格線重疊變粗
+                        grid: { drawOnChartArea: false },
                         title: { display: true, text: '平均人數', font: { size: titleFontSize, weight: 'bold' } }
                     }
                 }
             }
         });
 
-        // 預設靠左於 07:00
         const wrapper = document.getElementById('todayChartWrapper');
         wrapper.scrollLeft = 0;
 
-        // 慢速 2 倍平滑右滑至當前時間
         let hasScrolled = false;
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
