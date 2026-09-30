@@ -142,8 +142,23 @@
             font-size: clamp(1.5rem, 4.4vw, 2.4rem); 
             color: #334155; 
             font-weight: 900; 
-            margin-bottom: 16px; 
+            margin-bottom: 8px; 
         }
+
+        /* 異常數值提示標籤 */
+        .anomaly-badge {
+            display: inline-block;
+            background-color: #fff3bf;
+            color: #d9480f;
+            border: 1px solid #ffe066;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+            font-weight: 800;
+            margin-bottom: 14px;
+            letter-spacing: 0.3px;
+        }
+
         .live-numbers { 
             font-size: clamp(4.2rem, 14vw, 6.8rem); 
             font-weight: 900; 
@@ -276,6 +291,8 @@
         <div class="live-title-main">鼓山運動中心</div>
         <div class="live-title-sub">健身房人流分析</div>
         <div class="live-subtitle">現在人數 / 容留人數</div>
+        <!-- 標註異常提示容器 -->
+        <div id="anomalyBadge" class="anomaly-badge" style="display: none;"></div>
         <div class="live-numbers">
             <span id="currentPeople">--</span> / 70 
             <span class="live-percentage" id="currentPercent">( --% )</span>
@@ -460,7 +477,7 @@
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
 
-    // 💡 柱狀圖顏色：最高紅色、第二高峰橘色、最低綠色
+    // 柱狀圖顏色：最高紅色、第二高峰橘色、最低綠色
     function getBarColors(dataArray) {
         const validData = dataArray.filter(v => v > 0); 
         const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
@@ -471,7 +488,7 @@
 
         return dataArray.map(val => {
             if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.85)';       // 最高峰：紅色
-            if (val === secondMaxVal && val > 0) return 'rgba(251, 146, 60, 0.9)'; // 💡 第二高峰：橘色
+            if (val === secondMaxVal && val > 0) return 'rgba(251, 146, 60, 0.9)'; // 第二高峰：橘色
             if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.85)';       // 最低：綠色
             return 'rgba(200, 200, 200, 0.55)';                                   // 一般：淺灰
         });
@@ -624,9 +641,11 @@
         const todayLabels = sortedKeys;
         const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
+        // 實時大字報與異常標籤處理
         if (latestPeople !== '--') {
             const currentPeopleElem = document.getElementById('currentPeople');
             const percentElement = document.getElementById('currentPercent');
+            const anomalyElem = document.getElementById('anomalyBadge');
             
             const nowHour = now.getHours();
             const isClosed = (nowHour >= 22 || nowHour < 6);
@@ -638,6 +657,13 @@
                 currentPeopleElem.innerText = '0';
                 percentElement.innerText = '(已打烊)';
                 currentPeopleElem.className = 'text-level-green';
+                
+                if (latestPeople > 0) {
+                    anomalyElem.innerText = `🌙 目前為非營業時段 (官方閘門殘留 ${latestPeople} 人未歸零)`;
+                    anomalyElem.style.display = 'inline-block';
+                } else {
+                    anomalyElem.style.display = 'none';
+                }
             } else {
                 currentPeopleElem.innerText = displayPeople;
                 currentPeopleElem.classList.remove('text-level-green', 'text-level-yellow', 'text-level-red');
@@ -653,6 +679,16 @@
                 } else {
                     currentPeopleElem.classList.remove('text-danger');
                     percentElement.classList.remove('text-danger');
+                }
+
+                if (todayOffset > 0) {
+                    anomalyElem.innerText = `⚠️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
+                    anomalyElem.style.display = 'inline-block';
+                } else if (latestPeople > CAPACITY) {
+                    anomalyElem.innerText = `⚠️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
+                    anomalyElem.style.display = 'inline-block';
+                } else {
+                    anomalyElem.style.display = 'none';
                 }
 
                 calculatePrediction(latestRecordTime, displayPeople, {
