@@ -342,7 +342,14 @@
 
     const CAPACITY = 70;
 
-    // YouTube IFrame API 背景音樂播放控制
+    // 💡 YouTube 隨機播放清單（包含加入的 Sia - Unstoppable 與 Kelly Clarkson - Stronger）
+    const MUSIC_PLAYLIST = [
+        '3OnnDqH6Wj8', // 原設定運動背景樂
+        'jJvDnYdD8JQ', // Sia - Unstoppable
+        'Xn676-fLq7I'  // Kelly Clarkson - Stronger
+    ];
+
+    let currentTrackIndex = Math.floor(Math.random() * MUSIC_PLAYLIST.length); // 每次開啟隨機第一首
     let ytPlayer = null;
     let isPlaying = false;
 
@@ -355,14 +362,13 @@
         ytPlayer = new YT.Player('yt-audio-player', {
             height: '1',
             width: '1',
-            videoId: '3OnnDqH6Wj8',
+            videoId: MUSIC_PLAYLIST[currentTrackIndex],
             playerVars: {
-                'playsinline': 1,
-                'loop': 1,
-                'playlist': '3OnnDqH6Wj8'
+                'playsinline': 1
             },
             events: {
-                'onReady': onPlayerReady
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
             }
         });
     }
@@ -373,13 +379,35 @@
             if (ytPlayer && !isPlaying) {
                 ytPlayer.playVideo();
                 isPlaying = true;
-                document.getElementById('music-btn').innerText = '⏸️ 暫停音樂';
+                document.getElementById('music-btn').innerText = '⏸️️ 暫停音樂';
             }
             window.removeEventListener('click', unlockAudio);
             window.removeEventListener('touchstart', unlockAudio);
         };
         window.addEventListener('click', unlockAudio);
         window.addEventListener('touchstart', unlockAudio);
+    }
+
+    // 💡 當曲目播畢時，自動隨機抽下一首切換播放
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) {
+            playRandomNextTrack();
+        }
+    }
+
+    function playRandomNextTrack() {
+        if (!ytPlayer || MUSIC_PLAYLIST.length <= 1) {
+            if (ytPlayer) ytPlayer.playVideo();
+            return;
+        }
+        let nextIndex = currentTrackIndex;
+        while (nextIndex === currentTrackIndex) {
+            nextIndex = Math.floor(Math.random() * MUSIC_PLAYLIST.length);
+        }
+        currentTrackIndex = nextIndex;
+        ytPlayer.loadVideoById(MUSIC_PLAYLIST[currentTrackIndex]);
+        isPlaying = true;
+        document.getElementById('music-btn').innerText = '⏸️ 暫停音樂';
     }
 
     function toggleMusic() {
@@ -567,7 +595,7 @@
 
         let daySums = Array(7).fill(0);
         let dayCounts = Array(7).fill(0);
-        let daySamples = Array.from({ length: 7 }, () => []); // 儲存近30天各星期所有抽樣點以計算百分位數
+        let daySamples = Array.from({ length: 7 }, () => []);
         let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
 
@@ -682,7 +710,7 @@
                     anomalyElem.innerText = `⚠️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
                     anomalyElem.style.display = 'inline-block';
                 } else if (latestPeople > CAPACITY) {
-                    anomalyElem.innerText = `⚠️️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
+                    anomalyElem.innerText = `⚠️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
                     anomalyElem.style.display = 'inline-block';
                 } else {
                     anomalyElem.style.display = 'none';
@@ -699,7 +727,7 @@
         const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
         
-        // 💡 計算第 95 百分位數（P95）作為常態尖峰人數，排除單點溢出
+        // 計算第 95 百分位數（P95）常態尖峰
         const dayP95sOrdered = dayOrder.map(d => {
             const arr = daySamples[d];
             if (!arr || arr.length === 0) return 0;
