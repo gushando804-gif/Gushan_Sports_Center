@@ -252,7 +252,7 @@
         .scrollable-chart-inner {
             position: relative;
             height: 50vh;
-            min-width: 1150px; 
+            min-width: 1250px; 
         }
     </style>
 </head>
@@ -511,13 +511,35 @@
         const cacheBuster = new Date().getTime();
         const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
         const textData = await response.text();
-        const rows = textData.trim().split('\n').slice(1);
+        const rawRows = textData.trim().split('\n');
+        // 自動過濾第一行標頭 (Timestamp,Current_People)
+        const rows = rawRows[0].includes('Timestamp') ? rawRows.slice(1) : rawRows;
         
         const now = new Date();
         const todayDateString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
         
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
+
+        // 💡 步驟一：先掃描每日開館首筆數據，計算每日的「殘留底數 Offset」
+        const dailyBaselineOffset = {};
+        rows.forEach(row => {
+            const cols = row.split(',');
+            if (cols.length === 2) {
+                const timeStr = cols[0].trim();
+                const people = parseInt(cols[1]);
+                const dateKey = timeStr.substring(0, 10);
+                if (!isNaN(people) && !dailyBaselineOffset.hasOwnProperty(dateKey)) {
+                    // 若當天第一筆出現在 06:00~06:30 且人數 > 10，認定為昨晚未歸零
+                    const hour = parseInt(timeStr.substring(11, 13));
+                    if (hour === 6 && people > 10) {
+                        dailyBaselineOffset[dateKey] = people;
+                    } else {
+                        dailyBaselineOffset[dateKey] = 0;
+                    }
+                }
+            }
+        });
 
         let latestPeople = '--';
         let latestRecordTime = null;
@@ -535,39 +557,44 @@
         rows.forEach(row => {
             const cols = row.split(',');
             if (cols.length === 2) {
-                const timeStr = cols[0];
+                const timeStr = cols[0].trim();
                 const recordTime = new Date(timeStr.replace(/-/g, '/'));
-                let people = parseInt(cols[1]);
+                let rawPeople = parseInt(cols[1]);
 
-                if (!isNaN(people)) {
-                    latestPeople = people;
+                if (!isNaN(rawPeople)) {
+                    latestPeople = rawPeople;
                     latestRecordTime = recordTime;
 
-                    const validPeople = Math.min(CAPACITY, people);
+                    const dateKey = timeStr.substring(0, 10);
+                    const offset = dailyBaselineOffset[dateKey] || 0;
+                    // 💡 扣除殘留底數並限制在 0 ~ 70
+                    const cleanPeople = Math.max(0, Math.min(CAPACITY, rawPeople - offset));
+
                     const hour = recordTime.getHours();
                     const timeKey = getHalfHourKey(recordTime);
                     const dayOfWeek = recordTime.getDay();
 
+                    // 💡 營業時間擴大為 06:00 ～ 22:00
                     if (timeStr.startsWith(todayDateString)) {
-                        if (hour >= 7 && hour <= 22) {
+                        if (hour >= 6 && hour <= 22) {
                             if (!todayHalfHourMap[timeKey]) {
                                 todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
                             }
-                            todayHalfHourMap[timeKey].sum += validPeople;
+                            todayHalfHourMap[timeKey].sum += cleanPeople;
                             todayHalfHourMap[timeKey].count += 1;
                         }
                     }
 
                     if (recordTime >= oneMonthAgo) {
-                        if (hour >= 7 && hour <= 22) {
-                            daySums[dayOfWeek] += validPeople;
+                        if (hour >= 6 && hour <= 22) {
+                            daySums[dayOfWeek] += cleanPeople;
                             dayCounts[dayOfWeek]++;
 
-                            if (validPeople > dayMaxs[dayOfWeek]) {
-                                dayMaxs[dayOfWeek] = validPeople;
+                            if (cleanPeople > dayMaxs[dayOfWeek]) {
+                                dayMaxs[dayOfWeek] = cleanPeople;
                             }
 
-                            hourSums[hour] += validPeople;
+                            hourSums[hour] += cleanPeople;
                             hourCounts[hour]++;
 
                             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
@@ -576,14 +603,14 @@
                                     historyWeekendSums[timeKey] = 0;
                                     historyWeekendCounts[timeKey] = 0;
                                 }
-                                historyWeekendSums[timeKey] += validPeople;
+                                historyWeekendSums[timeKey] += cleanPeople;
                                 historyWeekendCounts[timeKey] += 1;
                             } else {
                                 if (!historyWeekdaySums[timeKey]) {
                                     historyWeekdaySums[timeKey] = 0;
                                     historyWeekdayCounts[timeKey] = 0;
                                 }
-                                historyWeekdaySums[timeKey] += validPeople;
+                                historyWeekdaySums[timeKey] += cleanPeople;
                                 historyWeekdayCounts[timeKey] += 1;
                             }
                         }
@@ -596,30 +623,43 @@
         const todayLabels = sortedKeys;
         const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
+        // 💡 實時大字報處理（包含打烊歸零與底數扣除）
         if (latestPeople !== '--') {
             const currentPeopleElem = document.getElementById('currentPeople');
-            currentPeopleElem.innerText = latestPeople;
-            
-            currentPeopleElem.classList.remove('text-level-green', 'text-level-yellow', 'text-level-red');
-            const currentStatus = getCrowdednessStatus(latestPeople);
-            currentPeopleElem.classList.add(currentStatus.textClass);
-
-            let percent = Math.round((latestPeople / CAPACITY) * 100);
             const percentElement = document.getElementById('currentPercent');
-            percentElement.innerText = `(${percent}%)`;
             
-            if (percent >= 100) {
-                currentPeopleElem.classList.add('text-danger');
-                percentElement.classList.add('text-danger');
-            } else {
-                currentPeopleElem.classList.remove('text-danger');
-                percentElement.classList.remove('text-danger');
-            }
+            const nowHour = now.getHours();
+            const isClosed = (nowHour >= 22 || nowHour < 6); // 22:00 ~ 06:00 已打烊
 
-            calculatePrediction(latestRecordTime, latestPeople, {
-                weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
-                weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
-            });
+            let todayOffset = dailyBaselineOffset[todayDateString] || 0;
+            let displayPeople = Math.max(0, Math.min(CAPACITY, latestPeople - todayOffset));
+
+            if (isClosed) {
+                currentPeopleElem.innerText = '0';
+                percentElement.innerText = '(已打烊)';
+                currentPeopleElem.className = 'text-level-green';
+            } else {
+                currentPeopleElem.innerText = displayPeople;
+                currentPeopleElem.classList.remove('text-level-green', 'text-level-yellow', 'text-level-red');
+                const currentStatus = getCrowdednessStatus(displayPeople);
+                currentPeopleElem.classList.add(currentStatus.textClass);
+
+                let percent = Math.round((displayPeople / CAPACITY) * 100);
+                percentElement.innerText = `(${percent}%)`;
+                
+                if (percent >= 100) {
+                    currentPeopleElem.classList.add('text-danger');
+                    percentElement.classList.add('text-danger');
+                } else {
+                    currentPeopleElem.classList.remove('text-danger');
+                    percentElement.classList.remove('text-danger');
+                }
+
+                calculatePrediction(latestRecordTime, displayPeople, {
+                    weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
+                    weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
+                });
+            }
         }
 
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
@@ -627,9 +667,10 @@
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
         const dayMaxsOrdered = dayOrder.map(d => dayMaxs[d]);
 
+        // 💡 營運時段改為從 06:00 到 22:00
         const hourLabels = [];
         const hourAvgs = [];
-        for (let i = 7; i <= 22; i++) {
+        for (let i = 6; i <= 22; i++) {
             hourLabels.push(i.toString().padStart(2, '0') + ':00');
             hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
         }
@@ -666,7 +707,7 @@
 
     function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
         const hour = targetTime.getHours();
-        if (hour < 7 || hour > 22) return -1;
+        if (hour < 6 || hour > 22) return -1; // 💡 06:00 ~ 22:00 外回傳已打烊
 
         const key = getHalfHourKey(targetTime);
         const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
