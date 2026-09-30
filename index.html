@@ -72,6 +72,37 @@
             transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
 
+        /* 💡 頂部熱血橫幅設計 (Hero Banner) */
+        .hero-banner-wrapper {
+            position: relative;
+            width: 100%;
+            height: clamp(180px, 32vw, 320px);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .hero-banner-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 30%;
+            display: block;
+            filter: contrast(1.1) brightness(0.92);
+        }
+        /* 賽博漸層遮罩：讓圖片自然融入下方的暗黑面板 */
+        .hero-banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(8, 9, 15, 0.15) 0%, rgba(8, 9, 15, 0.4) 60%, rgba(16, 20, 31, 0.98) 100%),
+                        linear-gradient(90deg, rgba(0, 240, 255, 0.15) 0%, transparent 40%, rgba(255, 0, 127, 0.15) 100%);
+            pointer-events: none;
+        }
+
         /* 懸浮背景音樂控制鈕 */
         #music-btn {
             position: fixed;
@@ -388,6 +419,12 @@
             <span id="ptr-spinner">🔄</span>
             <span id="ptr-text">下拉更新</span>
         </div>
+    </div>
+
+    <!-- 💡 頂部熱血重訓視覺大圖 (Hero Banner) -->
+    <div class="hero-banner-wrapper">
+        <img src="banner.jpg" alt="鼓山運動中心健身房熱血訓練" class="hero-banner-img">
+        <div class="hero-banner-overlay"></div>
     </div>
 
     <!-- 實時狀態大字報 -->
@@ -811,10 +848,10 @@
                 }
 
                 if (todayOffset > 0) {
-                    anomalyElem.innerText = `⚠️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
+                    anomalyElem.innerText = `⚠️️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
                     anomalyElem.style.display = 'inline-block';
                 } else if (latestPeople > CAPACITY) {
-                    anomalyElem.innerText = `⚠️️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
+                    anomalyElem.innerText = `⚠️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
                     anomalyElem.style.display = 'inline-block';
                 } else {
                     anomalyElem.style.display = 'none';
