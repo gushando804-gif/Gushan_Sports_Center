@@ -567,7 +567,7 @@
 
         let daySums = Array(7).fill(0);
         let dayCounts = Array(7).fill(0);
-        let dayMaxs = Array(7).fill(0); 
+        let daySamples = Array.from({ length: 7 }, () => []); // 儲存近30天各星期所有抽樣點以計算百分位數
         let hourSums = Array(24).fill(0);
         let hourCounts = Array(24).fill(0);
 
@@ -607,10 +607,7 @@
                         if (hour >= 6 && hour <= 22) {
                             daySums[dayOfWeek] += cleanPeople;
                             dayCounts[dayOfWeek]++;
-
-                            if (cleanPeople > dayMaxs[dayOfWeek]) {
-                                dayMaxs[dayOfWeek] = cleanPeople;
-                            }
+                            daySamples[dayOfWeek].push(cleanPeople);
 
                             hourSums[hour] += cleanPeople;
                             hourCounts[hour]++;
@@ -685,7 +682,7 @@
                     anomalyElem.innerText = `⚠️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
                     anomalyElem.style.display = 'inline-block';
                 } else if (latestPeople > CAPACITY) {
-                    anomalyElem.innerText = `⚠️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
+                    anomalyElem.innerText = `⚠️️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
                     anomalyElem.style.display = 'inline-block';
                 } else {
                     anomalyElem.style.display = 'none';
@@ -701,7 +698,15 @@
         const dayOrder = [1, 2, 3, 4, 5, 6, 0];
         const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
-        const dayMaxsOrdered = dayOrder.map(d => dayMaxs[d]);
+        
+        // 💡 計算第 95 百分位數（P95）作為常態尖峰人數，排除單點溢出
+        const dayP95sOrdered = dayOrder.map(d => {
+            const arr = daySamples[d];
+            if (!arr || arr.length === 0) return 0;
+            arr.sort((a, b) => a - b);
+            const idx = Math.floor(arr.length * 0.95);
+            return arr[Math.min(idx, arr.length - 1)];
+        });
 
         const hourLabels = [];
         const hourAvgs = [];
@@ -710,7 +715,7 @@
             hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
         }
 
-        return { todayLabels, todayData, dayLabels, dayAvgs, dayMaxsOrdered, hourLabels, hourAvgs };
+        return { todayLabels, todayData, dayLabels, dayAvgs, dayP95sOrdered, hourLabels, hourAvgs };
     }
 
     function calculatePrediction(nowTime, currentPeople, historyData) {
@@ -931,8 +936,8 @@
                     },
                     {
                         type: 'line',
-                        label: '最高人數 (Peak)',
-                        data: data.dayMaxsOrdered,
+                        label: '尖峰人潮 (P95)',
+                        data: data.dayP95sOrdered,
                         borderColor: 'rgba(231, 76, 60, 0.85)',
                         backgroundColor: 'rgba(231, 76, 60, 1)',
                         borderWidth: 2.5,
