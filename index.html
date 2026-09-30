@@ -460,15 +460,20 @@
         "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
     ];
 
+    // 💡 柱狀圖顏色：最高紅色、第二高峰橘色、最低綠色
     function getBarColors(dataArray) {
         const validData = dataArray.filter(v => v > 0); 
         const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
         const minVal = validData.length > 0 ? Math.min(...validData) : 0;
 
+        const remainingData = validData.filter(v => v < maxVal);
+        const secondMaxVal = remainingData.length > 0 ? Math.max(...remainingData) : -1;
+
         return dataArray.map(val => {
-            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.85)'; 
-            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.85)';  
-            return 'rgba(200, 200, 200, 0.55)';                                
+            if (val === maxVal && val > 0) return 'rgba(255, 77, 77, 0.85)';       // 最高峰：紅色
+            if (val === secondMaxVal && val > 0) return 'rgba(251, 146, 60, 0.9)'; // 💡 第二高峰：橘色
+            if (val === minVal && val > 0) return 'rgba(143, 206, 0, 0.85)';       // 最低：綠色
+            return 'rgba(200, 200, 200, 0.55)';                                   // 一般：淺灰
         });
     }
 
@@ -512,7 +517,6 @@
         const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
         const textData = await response.text();
         const rawRows = textData.trim().split('\n');
-        // 自動過濾第一行標頭 (Timestamp,Current_People)
         const rows = rawRows[0].includes('Timestamp') ? rawRows.slice(1) : rawRows;
         
         const now = new Date();
@@ -521,7 +525,7 @@
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
 
-        // 💡 步驟一：先掃描每日開館首筆數據，計算每日的「殘留底數 Offset」
+        // 掃描每日開館首筆數據，計算「殘留底數 Offset」
         const dailyBaselineOffset = {};
         rows.forEach(row => {
             const cols = row.split(',');
@@ -530,7 +534,6 @@
                 const people = parseInt(cols[1]);
                 const dateKey = timeStr.substring(0, 10);
                 if (!isNaN(people) && !dailyBaselineOffset.hasOwnProperty(dateKey)) {
-                    // 若當天第一筆出現在 06:00~06:30 且人數 > 10，認定為昨晚未歸零
                     const hour = parseInt(timeStr.substring(11, 13));
                     if (hour === 6 && people > 10) {
                         dailyBaselineOffset[dateKey] = people;
@@ -567,14 +570,12 @@
 
                     const dateKey = timeStr.substring(0, 10);
                     const offset = dailyBaselineOffset[dateKey] || 0;
-                    // 💡 扣除殘留底數並限制在 0 ~ 70
                     const cleanPeople = Math.max(0, Math.min(CAPACITY, rawPeople - offset));
 
                     const hour = recordTime.getHours();
                     const timeKey = getHalfHourKey(recordTime);
                     const dayOfWeek = recordTime.getDay();
 
-                    // 💡 營業時間擴大為 06:00 ～ 22:00
                     if (timeStr.startsWith(todayDateString)) {
                         if (hour >= 6 && hour <= 22) {
                             if (!todayHalfHourMap[timeKey]) {
@@ -623,13 +624,12 @@
         const todayLabels = sortedKeys;
         const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
 
-        // 💡 實時大字報處理（包含打烊歸零與底數扣除）
         if (latestPeople !== '--') {
             const currentPeopleElem = document.getElementById('currentPeople');
             const percentElement = document.getElementById('currentPercent');
             
             const nowHour = now.getHours();
-            const isClosed = (nowHour >= 22 || nowHour < 6); // 22:00 ~ 06:00 已打烊
+            const isClosed = (nowHour >= 22 || nowHour < 6);
 
             let todayOffset = dailyBaselineOffset[todayDateString] || 0;
             let displayPeople = Math.max(0, Math.min(CAPACITY, latestPeople - todayOffset));
@@ -667,7 +667,6 @@
         const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
         const dayMaxsOrdered = dayOrder.map(d => dayMaxs[d]);
 
-        // 💡 營運時段改為從 06:00 到 22:00
         const hourLabels = [];
         const hourAvgs = [];
         for (let i = 6; i <= 22; i++) {
@@ -707,7 +706,7 @@
 
     function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
         const hour = targetTime.getHours();
-        if (hour < 6 || hour > 22) return -1; // 💡 06:00 ~ 22:00 外回傳已打烊
+        if (hour < 6 || hour > 22) return -1;
 
         const key = getHalfHourKey(targetTime);
         const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
