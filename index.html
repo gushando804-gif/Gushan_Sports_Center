@@ -72,7 +72,7 @@
             transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
 
-        /* 💡 頂部熱血橫幅設計 (Hero Banner) */
+        /* 頂部熱血橫幅設計 (Hero Banner) */
         .hero-banner-wrapper {
             position: relative;
             width: 100%;
@@ -82,6 +82,7 @@
             margin-bottom: 24px;
             border: 1px solid rgba(0, 240, 255, 0.3);
             box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            background: #0d111b;
         }
         .hero-banner-img {
             width: 100%;
@@ -90,6 +91,7 @@
             object-position: center 30%;
             display: block;
             filter: contrast(1.1) brightness(0.92);
+            transition: opacity 0.4s ease-in-out;
         }
         /* 賽博漸層遮罩：讓圖片自然融入下方的暗黑面板 */
         .hero-banner-overlay {
@@ -421,9 +423,9 @@
         </div>
     </div>
 
-    <!-- 💡 頂部熱血重訓視覺大圖 (Hero Banner) -->
+    <!-- 頂部人流情境大圖 (動態切換：banner.jpg / banner50.jpg / banner100.jpg) -->
     <div class="hero-banner-wrapper">
-        <img src="banner.jpg" alt="鼓山運動中心健身房熱血訓練" class="hero-banner-img">
+        <img id="heroBannerImg" src="banner.jpg" alt="鼓山運動中心健身房人流即時情境" class="hero-banner-img">
         <div class="hero-banner-overlay"></div>
     </div>
 
@@ -665,10 +667,28 @@
         });
     }
 
+    // 💡 人流級距判斷與 Banner 圖片對應
     function getCrowdednessStatus(people) {
-        if (people <= 25) return { text: '舒適', cardClass: 'card-green', textClass: 'text-level-green' };
-        if (people <= 50) return { text: '適中', cardClass: 'card-yellow', textClass: 'text-level-yellow' };
-        return { text: '擁擠', cardClass: 'card-red', textClass: 'text-level-red' };
+        if (people <= 25) {
+            return { text: '舒適', cardClass: 'card-green', textClass: 'text-level-green', banner: 'banner.jpg' };
+        }
+        if (people <= 50) {
+            return { text: '適中', cardClass: 'card-yellow', textClass: 'text-level-yellow', banner: 'banner50.jpg' };
+        }
+        return { text: '擁擠', cardClass: 'card-red', textClass: 'text-level-red', banner: 'banner100.jpg' };
+    }
+
+    function updateBannerImage(targetBannerSrc) {
+        const bannerImg = document.getElementById('heroBannerImg');
+        if (!bannerImg) return;
+        const currentSrc = bannerImg.getAttribute('src');
+        if (currentSrc !== targetBannerSrc) {
+            bannerImg.style.opacity = '0.3';
+            setTimeout(() => {
+                bannerImg.src = targetBannerSrc;
+                bannerImg.style.opacity = '1';
+            }, 180);
+        }
     }
 
     function getHalfHourKey(dateObj) {
@@ -823,6 +843,7 @@
                 currentPeopleElem.innerText = '0';
                 percentElement.innerText = '(已打烊)';
                 currentPeopleElem.className = 'text-level-green';
+                updateBannerImage('banner.jpg');
                 
                 if (latestPeople > 0) {
                     anomalyElem.innerText = `🌙 離線保護啟動：官方閘門殘留 ${latestPeople} 人未歸零`;
@@ -836,6 +857,9 @@
                 const currentStatus = getCrowdednessStatus(displayPeople);
                 currentPeopleElem.classList.add(currentStatus.textClass);
 
+                // 💡 依即時人流級距切換頂部橫幅 Banner
+                updateBannerImage(currentStatus.banner);
+
                 let percent = Math.round((displayPeople / CAPACITY) * 100);
                 percentElement.innerText = `(${percent}%)`;
                 
@@ -848,7 +872,7 @@
                 }
 
                 if (todayOffset > 0) {
-                    anomalyElem.innerText = `⚠️️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
+                    anomalyElem.innerText = `⚠️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
                     anomalyElem.style.display = 'inline-block';
                 } else if (latestPeople > CAPACITY) {
                     anomalyElem.innerText = `⚠️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
