@@ -91,7 +91,7 @@
             object-position: center 30%;
             display: block;
             filter: contrast(1.1) brightness(0.92);
-            opacity: 0; /* 預設先隱藏，等判定好再淡入，徹底解決閃跳 */
+            opacity: 0;
             transition: opacity 0.35s ease-in-out;
         }
         .hero-banner-overlay {
@@ -655,7 +655,7 @@
         });
     }
 
-    // 💡 人流級距判斷與 Banner 圖片對應 (banner.jpg / banner50.jpg / banner100.jpg)
+    // 人流級距判斷與 Banner 圖片對應 (banner.jpg / banner50.jpg / banner100.jpg)
     function getCrowdednessStatus(people) {
         if (people <= 25) {
             return { text: '舒適', cardClass: 'card-green', textClass: 'text-level-green', banner: 'banner.jpg' };
@@ -666,13 +666,12 @@
         return { text: '擁擠', cardClass: 'card-red', textClass: 'text-level-red', banner: 'banner100.jpg' };
     }
 
-    // 💡 解決跳動問題：平滑淡入切換
+    // 平滑淡入切換 Banner
     function updateBannerImage(targetBannerSrc) {
         const bannerImg = document.getElementById('heroBannerImg');
         if (!bannerImg) return;
         const currentSrc = bannerImg.getAttribute('src');
         if (!currentSrc) {
-            // 初次載入：直接設定並優雅淡入，完全不閃跳
             bannerImg.src = targetBannerSrc;
             bannerImg.onload = () => { bannerImg.style.opacity = '1'; };
         } else if (currentSrc !== targetBannerSrc) {
@@ -850,7 +849,6 @@
                 const currentStatus = getCrowdednessStatus(displayPeople);
                 currentPeopleElem.classList.add(currentStatus.textClass);
 
-                // 💡 依人數狀態切換 Banner 圖片
                 updateBannerImage(currentStatus.banner);
 
                 let percent = Math.round((displayPeople / CAPACITY) * 100);
@@ -1102,7 +1100,8 @@
                     hasScrolled = true;
                     setTimeout(() => {
                         const targetLeft = wrapper.scrollWidth - wrapper.clientWidth;
-                        smoothScrollTo(wrapper, targetLeft, 1800);
+                        // 💡 改慢為現速度的 30%：滾動時長從 1800ms 增至 6000ms
+                        smoothScrollTo(wrapper, targetLeft, 6000);
                     }, 400);
                 }
             });
