@@ -72,7 +72,7 @@
             transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
 
-        /* 頂部熱血橫幅設計 (Hero Banner) */
+        /* 頂部熱血橫幅設計 (防止初次載入閃爍) */
         .hero-banner-wrapper {
             position: relative;
             width: 100%;
@@ -91,9 +91,9 @@
             object-position: center 30%;
             display: block;
             filter: contrast(1.1) brightness(0.92);
-            transition: opacity 0.4s ease-in-out;
+            opacity: 0; /* 預設先隱藏，等判定好再淡入，徹底解決閃跳 */
+            transition: opacity 0.35s ease-in-out;
         }
-        /* 賽博漸層遮罩：讓圖片自然融入下方的暗黑面板 */
         .hero-banner-overlay {
             position: absolute;
             top: 0;
@@ -136,7 +136,6 @@
             transform: scale(0.96);
         }
 
-        /* 隱藏 YouTube 播放器容器 */
         #yt-audio-player {
             position: absolute;
             top: -9999px;
@@ -147,7 +146,6 @@
             pointer-events: none;
         }
 
-        /* 下拉提示 */
         #ptr-indicator {
             position: absolute;
             top: -46px;
@@ -179,7 +177,6 @@
             transition: transform 0.15s linear;
         }
         
-        /* 實時狀態大字報設計 */
         .live-status { 
             text-align: center; 
             padding: clamp(24px, 5vw, 42px) 15px; 
@@ -219,7 +216,6 @@
             margin-bottom: 10px; 
         }
 
-        /* 異常數值標籤 */
         .anomaly-badge {
             display: inline-block;
             background: rgba(255, 145, 0, 0.12);
@@ -254,7 +250,6 @@
             font-style: normal;
         }
 
-        /* 霓虹色彩級距 */
         .text-level-green { 
             color: var(--neon-green) !important; 
             text-shadow: 0 0 22px rgba(0, 255, 102, 0.75) !important;
@@ -277,7 +272,6 @@
             to { opacity: 1; transform: scale(1.02); }
         }
 
-        /* 預測卡片 */
         .prediction-box { 
             display: flex; 
             gap: 16px; 
@@ -332,7 +326,6 @@
             text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
         }
 
-        /* 賽博微光底框狀態樣式 */
         .card-green {
             background: linear-gradient(180deg, rgba(0, 255, 102, 0.08) 0%, rgba(13, 20, 22, 0.8) 100%) !important;
             border-color: rgba(0, 255, 102, 0.4) !important;
@@ -423,9 +416,9 @@
         </div>
     </div>
 
-    <!-- 頂部人流情境大圖 (動態切換：banner.jpg / banner50.jpg / banner100.jpg) -->
+    <!-- 頂部人流情境大圖 (初始化為空，等判定後淡入，不再閃跳) -->
     <div class="hero-banner-wrapper">
-        <img id="heroBannerImg" src="banner.jpg" alt="鼓山運動中心健身房人流即時情境" class="hero-banner-img">
+        <img id="heroBannerImg" alt="鼓山運動中心健身房人流即時情境" class="hero-banner-img">
         <div class="hero-banner-overlay"></div>
     </div>
 
@@ -434,7 +427,6 @@
         <div class="live-title-main">鼓山運動中心</div>
         <div class="live-title-sub">健身房人流分析</div>
         <div class="live-subtitle">現在人數 / 容留人數</div>
-        <!-- 標註異常提示容器 -->
         <div id="anomalyBadge" class="anomaly-badge" style="display: none;"></div>
         <div class="live-numbers">
             <span id="currentPeople">--</span> / 70 
@@ -485,7 +477,6 @@
 
     const CAPACITY = 70;
 
-    // YouTube 隨機播放清單（包含 Sia - Unstoppable 與 Kelly Clarkson - Stronger）
     const MUSIC_PLAYLIST = [
         '3OnnDqH6Wj8',
         'jJvDnYdD8JQ',
@@ -506,9 +497,7 @@
             height: '1',
             width: '1',
             videoId: MUSIC_PLAYLIST[currentTrackIndex],
-            playerVars: {
-                'playsinline': 1
-            },
+            playerVars: { 'playsinline': 1 },
             events: {
                 'onReady': onPlayerReady,
                 'onStateChange': onPlayerStateChange
@@ -566,7 +555,6 @@
         }
     }
 
-    // 手機下拉重新整理
     let startY = 0;
     let currentY = 0;
     let isPulling = false;
@@ -660,14 +648,14 @@
         const secondMaxVal = remainingData.length > 0 ? Math.max(...remainingData) : -1;
 
         return dataArray.map(val => {
-            if (val === maxVal && val > 0) return 'rgba(255, 0, 127, 0.85)';       // 最高峰：霓虹桃粉
-            if (val === secondMaxVal && val > 0) return 'rgba(255, 145, 0, 0.88)'; // 第二高峰：電漿橘
-            if (val === minVal && val > 0) return 'rgba(0, 255, 102, 0.85)';       // 最低：矩陣綠
-            return 'rgba(0, 240, 255, 0.28)';                                     // 一般：微光青色
+            if (val === maxVal && val > 0) return 'rgba(255, 0, 127, 0.85)';
+            if (val === secondMaxVal && val > 0) return 'rgba(255, 145, 0, 0.88)';
+            if (val === minVal && val > 0) return 'rgba(0, 255, 102, 0.85)';
+            return 'rgba(0, 240, 255, 0.28)';
         });
     }
 
-    // 💡 人流級距判斷與 Banner 圖片對應
+    // 💡 人流級距判斷與 Banner 圖片對應 (banner.jpg / banner50.jpg / banner100.jpg)
     function getCrowdednessStatus(people) {
         if (people <= 25) {
             return { text: '舒適', cardClass: 'card-green', textClass: 'text-level-green', banner: 'banner.jpg' };
@@ -678,16 +666,21 @@
         return { text: '擁擠', cardClass: 'card-red', textClass: 'text-level-red', banner: 'banner100.jpg' };
     }
 
+    // 💡 解決跳動問題：平滑淡入切換
     function updateBannerImage(targetBannerSrc) {
         const bannerImg = document.getElementById('heroBannerImg');
         if (!bannerImg) return;
         const currentSrc = bannerImg.getAttribute('src');
-        if (currentSrc !== targetBannerSrc) {
-            bannerImg.style.opacity = '0.3';
+        if (!currentSrc) {
+            // 初次載入：直接設定並優雅淡入，完全不閃跳
+            bannerImg.src = targetBannerSrc;
+            bannerImg.onload = () => { bannerImg.style.opacity = '1'; };
+        } else if (currentSrc !== targetBannerSrc) {
+            bannerImg.style.opacity = '0.2';
             setTimeout(() => {
                 bannerImg.src = targetBannerSrc;
-                bannerImg.style.opacity = '1';
-            }, 180);
+                bannerImg.onload = () => { bannerImg.style.opacity = '1'; };
+            }, 150);
         }
     }
 
@@ -857,7 +850,7 @@
                 const currentStatus = getCrowdednessStatus(displayPeople);
                 currentPeopleElem.classList.add(currentStatus.textClass);
 
-                // 💡 依即時人流級距切換頂部橫幅 Banner
+                // 💡 依人數狀態切換 Banner 圖片
                 updateBannerImage(currentStatus.banner);
 
                 let percent = Math.round((displayPeople / CAPACITY) * 100);
