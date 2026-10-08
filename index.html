@@ -901,6 +901,48 @@
         return { todayLabels, todayData, dayLabels, dayAvgs, dayP95sOrdered, hourLabels, hourAvgs };
     }
 
+    // 💡 直式正立中文字標題通用生成插件
+    function createVerticalTitlePlugin(textChars, color = '#00f0ff') {
+        return {
+            id: 'verticalTitlePlugin_' + textChars.join(''),
+            afterDraw(chart) {
+                const ctx = chart.ctx;
+                const yScale = chart.scales.y;
+                if (!yScale) return;
+
+                const fontSize = getDynamicFontSize(15);
+                const lineHeight = fontSize * 1.35;
+                const totalHeight = textChars.length * lineHeight;
+
+                ctx.save();
+                ctx.font = `bold ${fontSize}px 'Rajdhani', 'Noto Sans TC', sans-serif`;
+                ctx.fillStyle = color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const centerY = (yScale.top + yScale.bottom) / 2;
+                const startY = centerY - (totalHeight / 2) + (lineHeight / 2);
+                const xPos = yScale.left - (fontSize * 1.05);
+
+                textChars.forEach((c, idx) => {
+                    ctx.fillText(c, xPos, startY + (idx * lineHeight));
+                });
+
+                // 若有右側 y1 軸（例如今日折線圖）
+                const y1Scale = chart.scales.y1;
+                if (y1Scale) {
+                    const startY1 = ((y1Scale.top + y1Scale.bottom) / 2) - (totalHeight / 2) + (lineHeight / 2);
+                    const xPos1 = y1Scale.right + (fontSize * 1.05);
+                    textChars.forEach((c, idx) => {
+                        ctx.fillText(c, xPos1, startY1 + (idx * lineHeight));
+                    });
+                }
+
+                ctx.restore();
+            }
+        };
+    }
+
     function calculatePrediction(nowTime, currentPeople, historyData) {
         if (!nowTime) return;
 
@@ -967,48 +1009,6 @@
         document.getElementById(factorElemId).innerText = factorText;
     }
 
-    // 💡 直式正立中文字標題插件 (由上而下正立書寫：平、均、人、數)
-    const verticalYAxisTitlePlugin = {
-        id: 'verticalYAxisTitlePlugin',
-        afterDraw(chart) {
-            const ctx = chart.ctx;
-            const yScale = chart.scales.y;
-            const y1Scale = chart.scales.y1;
-            const chars = ['平', '均', '人', '數'];
-            const fontSize = getDynamicFontSize(15);
-            const lineHeight = fontSize * 1.35;
-            const totalHeight = chars.length * lineHeight;
-
-            ctx.save();
-            ctx.font = `bold ${fontSize}px 'Rajdhani', 'Noto Sans TC', sans-serif`;
-            ctx.fillStyle = '#00f0ff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            // 左側 Y 軸直式標題
-            if (yScale) {
-                const centerY = (yScale.top + yScale.bottom) / 2;
-                const startY = centerY - (totalHeight / 2) + (lineHeight / 2);
-                const xPos = yScale.left - (fontSize * 1.05); // 精確定位在刻度數字外側
-                chars.forEach((c, idx) => {
-                    ctx.fillText(c, xPos, startY + (idx * lineHeight));
-                });
-            }
-
-            // 右側 Y1 軸直式標題
-            if (y1Scale) {
-                const centerY = (y1Scale.top + y1Scale.bottom) / 2;
-                const startY = centerY - (totalHeight / 2) + (lineHeight / 2);
-                const xPos = y1Scale.right + (fontSize * 1.05);
-                chars.forEach((c, idx) => {
-                    ctx.fillText(c, xPos, startY + (idx * lineHeight));
-                });
-            }
-
-            ctx.restore();
-        }
-    };
-
     async function renderCharts() {
         const data = await fetchAndProcessData();
         const tickFontSize = getDynamicFontSize(14);
@@ -1073,6 +1073,7 @@
             };
         }
 
+        // 1. 今日分時人流趨勢（平均人數：直式）
         if (todayChartInstance) todayChartInstance.destroy();
         const ctxToday = document.getElementById('todayChart').getContext('2d');
         todayChartInstance = new Chart(ctxToday, {
@@ -1094,7 +1095,7 @@
                     yAxisID: 'y'
                 }]
             },
-            plugins: [verticalYAxisTitlePlugin], // 掛載直式書寫標題插件
+            plugins: [createVerticalTitlePlugin(['平', '均', '人', '數'], '#00f0ff')],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -1124,7 +1125,7 @@
                         grid: { color: 'rgba(255, 255, 255, 0.06)' },
                         beginAtZero: true, 
                         max: CAPACITY,
-                        title: { display: false } // 停用預設躺平旋轉標題，改由插件渲染直式文字
+                        title: { display: false }
                     },
                     y1: {
                         position: 'right',
@@ -1148,7 +1149,6 @@
                     hasScrolled = true;
                     setTimeout(() => {
                         const targetLeft = wrapper.scrollWidth - wrapper.clientWidth;
-                        // 改慢為現速度的 30%：滾動時長 6000ms
                         smoothScrollTo(wrapper, targetLeft, 6000);
                     }, 400);
                 }
@@ -1157,6 +1157,7 @@
 
         observer.observe(wrapper);
 
+        // 2. 近30日每週各日平均人流（人數：直式）
         if (dayChartInstance) dayChartInstance.destroy();
         const ctxDay = document.getElementById('dayChart').getContext('2d');
         dayChartInstance = new Chart(ctxDay, {
@@ -1186,10 +1187,16 @@
                     }
                 ]
             },
+            plugins: [createVerticalTitlePlugin(['人', '數'], '#00f0ff')], // 直式「人、數」
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 12 } },
+                layout: { 
+                    padding: { 
+                        left: getDynamicFontSize(22),
+                        right: 12
+                    } 
+                },
                 animation: { duration: 0 },
                 plugins: { 
                     legend: { 
@@ -1209,12 +1216,13 @@
                         grid: { color: 'rgba(255, 255, 255, 0.06)' },
                         beginAtZero: true, 
                         max: CAPACITY, 
-                        title: { display: true, text: '人數', color: '#00f0ff', font: { size: titleFontSize, weight: 'bold' } } 
+                        title: { display: false } // 停用預設橫躺標題
                     } 
                 }
             }
         });
 
+        // 3. 近30日營運時段平均人流（平均人數：直式）
         if (hourChartInstance) hourChartInstance.destroy();
         const ctxHour = document.getElementById('hourChart').getContext('2d');
         hourChartInstance = new Chart(ctxHour, {
@@ -1228,10 +1236,16 @@
                     borderRadius: 4
                 }]
             },
+            plugins: [createVerticalTitlePlugin(['平', '均', '人', '數'], '#00f0ff')], // 直式「平、均、人、數」
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 12 } },
+                layout: { 
+                    padding: { 
+                        left: getDynamicFontSize(22),
+                        right: 12
+                    } 
+                },
                 animation: { duration: 0 },
                 plugins: { 
                     legend: { display: false },
@@ -1247,7 +1261,7 @@
                         ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } }, 
                         grid: { color: 'rgba(255, 255, 255, 0.06)' },
                         beginAtZero: true, 
-                        title: { display: true, text: '平均人數', color: '#00f0ff', font: { size: titleFontSize, weight: 'bold' } } 
+                        title: { display: false } // 停用預設橫躺標題
                     } 
                 }
             }
