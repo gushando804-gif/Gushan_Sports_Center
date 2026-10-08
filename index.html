@@ -429,4 +429,847 @@
         <div class="live-subtitle">現在人數 / 容留人數</div>
         <div id="anomalyBadge" class="anomaly-badge" style="display: none;"></div>
         <div class="live-numbers">
-            <span id="currentPeople">--</span> /
+            <span id="currentPeople">--</span> / 70 
+            <span class="live-percentage" id="currentPercent">( --% )</span>
+        </div>
+    </div>
+
+    <!-- 未來一小時擁擠度預測卡片 -->
+    <div class="prediction-box">
+        <div class="prediction-item card-default" id="pred30Card">
+            <div class="pred-time-label">預測30分鐘後</div>
+            <div class="pred-time-clock">[ <span id="pred30Time">--:--</span> ]</div>
+            <div class="pred-count" id="pred30Count">計算中...</div>
+            <div class="pred-level" id="pred30Level"></div>
+            <div id="pred30Factor" class="pred-factors"></div>
+        </div>
+        <div class="prediction-item card-default" id="pred60Card">
+            <div class="pred-time-label">預測60分鐘後</div>
+            <div class="pred-time-clock">[ <span id="pred60Time">--:--</span> ]</div>
+            <div class="pred-count" id="pred60Count">計算中...</div>
+            <div class="pred-level" id="pred60Level"></div>
+            <div id="pred60Factor" class="pred-factors"></div>
+        </div>
+    </div>
+
+    <h2>今日分時人流趨勢</h2>
+    <div class="scrollable-chart-wrapper" id="todayChartWrapper">
+        <div class="scrollable-chart-inner">
+            <canvas id="todayChart"></canvas>
+        </div>
+    </div>
+
+    <h2>近30日每週各日平均人流</h2>
+    <div class="chart-container">
+        <canvas id="dayChart"></canvas>
+    </div>
+
+    <h2>近30日營運時段平均人流</h2>
+    <div class="chart-container">
+        <canvas id="hourChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let todayChartInstance = null;
+    let dayChartInstance = null;
+    let hourChartInstance = null;
+
+    const CAPACITY = 70;
+
+    const MUSIC_PLAYLIST = [
+        '3OnnDqH6Wj8',
+        'jJvDnYdD8JQ',
+        'Xn676-fLq7I'
+    ];
+
+    let currentTrackIndex = Math.floor(Math.random() * MUSIC_PLAYLIST.length);
+    let ytPlayer = null;
+    let isPlaying = false;
+
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    function onYouTubeIframeAPIReady() {
+        ytPlayer = new YT.Player('yt-audio-player', {
+            height: '1',
+            width: '1',
+            videoId: MUSIC_PLAYLIST[currentTrackIndex],
+            playerVars: { 'playsinline': 1 },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
+
+    function onPlayerReady(event) {
+        event.target.playVideo();
+        const unlockAudio = () => {
+            if (ytPlayer && !isPlaying) {
+                ytPlayer.playVideo();
+                isPlaying = true;
+                document.getElementById('music-btn').innerText = '⏸ 暫停音樂';
+            }
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('touchstart', unlockAudio);
+        };
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('touchstart', unlockAudio);
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) {
+            playRandomNextTrack();
+        }
+    }
+
+    function playRandomNextTrack() {
+        if (!ytPlayer || MUSIC_PLAYLIST.length <= 1) {
+            if (ytPlayer) ytPlayer.playVideo();
+            return;
+        }
+        let nextIndex = currentTrackIndex;
+        while (nextIndex === currentTrackIndex) {
+            nextIndex = Math.floor(Math.random() * MUSIC_PLAYLIST.length);
+        }
+        currentTrackIndex = nextIndex;
+        ytPlayer.loadVideoById(MUSIC_PLAYLIST[currentTrackIndex]);
+        isPlaying = true;
+        document.getElementById('music-btn').innerText = '⏸ 暫停音樂';
+    }
+
+    function toggleMusic() {
+        if (!ytPlayer) return;
+        const btn = document.getElementById('music-btn');
+        if (isPlaying) {
+            ytPlayer.pauseVideo();
+            btn.innerText = '⚡ 播放音樂';
+            isPlaying = false;
+        } else {
+            ytPlayer.playVideo();
+            btn.innerText = '⏸ 暫停音樂';
+            isPlaying = true;
+        }
+    }
+
+    let startY = 0;
+    let currentY = 0;
+    let isPulling = false;
+    const ptrThreshold = 50;
+    const ptrIndicator = document.getElementById('ptr-indicator');
+    const ptrText = document.getElementById('ptr-text');
+    const ptrSpinner = document.getElementById('ptr-spinner');
+    const mainContainer = document.getElementById('mainContainer');
+
+    window.addEventListener('touchstart', (e) => {
+        if (window.scrollY <= 0) {
+            startY = e.touches[0].pageY;
+            isPulling = true;
+        }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isPulling || window.scrollY > 0) return;
+        currentY = e.touches[0].pageY;
+        let diff = currentY - startY;
+
+        if (diff > 0) {
+            let moveY = Math.min(diff * 0.4, 65);
+            mainContainer.style.transform = `translateY(${moveY}px)`;
+            
+            if (moveY > 15) {
+                ptrIndicator.style.opacity = '1';
+            } else {
+                ptrIndicator.style.opacity = '0';
+            }
+
+            let rotation = (diff / ptrThreshold) * 180;
+            ptrSpinner.style.transform = `rotate(${rotation}deg)`;
+
+            if (diff >= ptrThreshold) {
+                ptrText.innerText = '放開立即更新';
+            } else {
+                ptrText.innerText = '下拉更新';
+            }
+        }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+        if (!isPulling) return;
+        let diff = currentY - startY;
+        isPulling = false;
+
+        if (diff >= ptrThreshold && window.scrollY <= 0) {
+            ptrText.innerText = '同步中...';
+            ptrSpinner.style.transform = 'rotate(360deg)';
+            setTimeout(() => {
+                location.reload();
+            }, 200);
+        } else {
+            ptrIndicator.style.opacity = '0';
+            mainContainer.style.transform = 'translateY(0)';
+        }
+        startY = 0;
+        currentY = 0;
+    });
+
+    Chart.defaults.font.family = "'Rajdhani', 'Noto Sans TC', sans-serif";
+    Chart.defaults.color = "#94a3b8";
+
+    const getDynamicFontSize = (base) => {
+        const width = window.innerWidth;
+        if (width < 480) return base;
+        if (width < 768) return base + 2;
+        return base + 4;
+    };
+
+    const tooltipFontConfig = {
+        titleFont: { family: "'Orbitron', sans-serif", size: 16, weight: 'bold' },
+        bodyFont: { family: "'Rajdhani', sans-serif", size: 16, weight: 'bold' },
+        backgroundColor: 'rgba(10, 14, 23, 0.95)',
+        borderColor: '#00f0ff',
+        borderWidth: 1,
+        padding: 12
+    };
+
+    const TAIWAN_HOLIDAYS = [
+        "01-01", "02-28", "04-04", "04-05", "05-01", "06-10", "09-17", "10-10"
+    ];
+
+    function getBarColors(dataArray) {
+        const validData = dataArray.filter(v => v > 0); 
+        const maxVal = validData.length > 0 ? Math.max(...validData) : 0;
+        const minVal = validData.length > 0 ? Math.min(...validData) : 0;
+
+        const remainingData = validData.filter(v => v < maxVal);
+        const secondMaxVal = remainingData.length > 0 ? Math.max(...remainingData) : -1;
+
+        return dataArray.map(val => {
+            if (val === maxVal && val > 0) return 'rgba(255, 0, 127, 0.85)';
+            if (val === secondMaxVal && val > 0) return 'rgba(255, 145, 0, 0.88)';
+            if (val === minVal && val > 0) return 'rgba(0, 255, 102, 0.85)';
+            return 'rgba(0, 240, 255, 0.28)';
+        });
+    }
+
+    // 人流級距判斷與 Banner 圖片對應 (banner.jpg / banner50.jpg / banner100.jpg)
+    function getCrowdednessStatus(people) {
+        if (people <= 25) {
+            return { text: '舒適', cardClass: 'card-green', textClass: 'text-level-green', banner: 'banner.jpg' };
+        }
+        if (people <= 50) {
+            return { text: '適中', cardClass: 'card-yellow', textClass: 'text-level-yellow', banner: 'banner50.jpg' };
+        }
+        return { text: '擁擠', cardClass: 'card-red', textClass: 'text-level-red', banner: 'banner100.jpg' };
+    }
+
+    // 平滑淡入切換 Banner
+    function updateBannerImage(targetBannerSrc) {
+        const bannerImg = document.getElementById('heroBannerImg');
+        if (!bannerImg) return;
+        const currentSrc = bannerImg.getAttribute('src');
+        if (!currentSrc) {
+            bannerImg.src = targetBannerSrc;
+            bannerImg.onload = () => { bannerImg.style.opacity = '1'; };
+        } else if (currentSrc !== targetBannerSrc) {
+            bannerImg.style.opacity = '0.2';
+            setTimeout(() => {
+                bannerImg.src = targetBannerSrc;
+                bannerImg.onload = () => { bannerImg.style.opacity = '1'; };
+            }, 150);
+        }
+    }
+
+    function getHalfHourKey(dateObj) {
+        const h = dateObj.getHours();
+        const m = dateObj.getMinutes();
+        const slot = m < 30 ? '00' : '30';
+        return `${String(h).padStart(2, '0')}:${slot}`;
+    }
+
+    function smoothScrollTo(element, target, duration) {
+        const start = element.scrollLeft;
+        const change = target - start;
+        const startTime = performance.now();
+
+        function animateScroll(currentTime) {
+            const timeElapsed = currentTime - startTime;
+            const progress = Math.min(timeElapsed / duration, 1);
+            
+            const ease = progress < 0.5 
+                ? 2 * progress * progress 
+                : -1 + (4 - 2 * progress) * progress;
+
+            element.scrollLeft = start + (change * ease);
+
+            if (timeElapsed < duration) {
+                requestAnimationFrame(animateScroll);
+            }
+        }
+        requestAnimationFrame(animateScroll);
+    }
+
+    async function fetchAndProcessData() {
+        const cacheBuster = new Date().getTime();
+        const response = await fetch(`gym_capacity_log.csv?t=${cacheBuster}`);
+        const textData = await response.text();
+        const rawRows = textData.trim().split('\n');
+        const rows = rawRows[0].includes('Timestamp') ? rawRows.slice(1) : rawRows;
+        
+        const now = new Date();
+        const todayDateString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(now.getMonth() - 1);
+
+        const dailyBaselineOffset = {};
+        rows.forEach(row => {
+            const cols = row.split(',');
+            if (cols.length === 2) {
+                const timeStr = cols[0].trim();
+                const people = parseInt(cols[1]);
+                const dateKey = timeStr.substring(0, 10);
+                if (!isNaN(people) && !dailyBaselineOffset.hasOwnProperty(dateKey)) {
+                    const hour = parseInt(timeStr.substring(11, 13));
+                    if (hour === 6 && people > 10) {
+                        dailyBaselineOffset[dateKey] = people;
+                    } else {
+                        dailyBaselineOffset[dateKey] = 0;
+                    }
+                }
+            }
+        });
+
+        let latestPeople = '--';
+        let latestRecordTime = null;
+        let todayHalfHourMap = {};
+
+        let daySums = Array(7).fill(0);
+        let dayCounts = Array(7).fill(0);
+        let daySamples = Array.from({ length: 7 }, () => []);
+        let hourSums = Array(24).fill(0);
+        let hourCounts = Array(24).fill(0);
+
+        let historyWeekdaySums = {}, historyWeekdayCounts = {};
+        let historyWeekendSums = {}, historyWeekendCounts = {};
+
+        rows.forEach(row => {
+            const cols = row.split(',');
+            if (cols.length === 2) {
+                const timeStr = cols[0].trim();
+                const recordTime = new Date(timeStr.replace(/-/g, '/'));
+                let rawPeople = parseInt(cols[1]);
+
+                if (!isNaN(rawPeople)) {
+                    latestPeople = rawPeople;
+                    latestRecordTime = recordTime;
+
+                    const dateKey = timeStr.substring(0, 10);
+                    const offset = dailyBaselineOffset[dateKey] || 0;
+                    const cleanPeople = Math.max(0, Math.min(CAPACITY, rawPeople - offset));
+
+                    const hour = recordTime.getHours();
+                    const timeKey = getHalfHourKey(recordTime);
+                    const dayOfWeek = recordTime.getDay();
+
+                    if (timeStr.startsWith(todayDateString)) {
+                        if (hour >= 6 && hour <= 22) {
+                            if (!todayHalfHourMap[timeKey]) {
+                                todayHalfHourMap[timeKey] = { sum: 0, count: 0 };
+                            }
+                            todayHalfHourMap[timeKey].sum += cleanPeople;
+                            todayHalfHourMap[timeKey].count += 1;
+                        }
+                    }
+
+                    if (recordTime >= oneMonthAgo) {
+                        if (hour >= 6 && hour <= 22) {
+                            daySums[dayOfWeek] += cleanPeople;
+                            dayCounts[dayOfWeek]++;
+                            daySamples[dayOfWeek].push(cleanPeople);
+
+                            hourSums[hour] += cleanPeople;
+                            hourCounts[hour]++;
+
+                            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                            if (isWeekend) {
+                                if (!historyWeekendSums[timeKey]) {
+                                    historyWeekendSums[timeKey] = 0;
+                                    historyWeekendCounts[timeKey] = 0;
+                                }
+                                historyWeekendSums[timeKey] += cleanPeople;
+                                historyWeekendCounts[timeKey] += 1;
+                            } else {
+                                if (!historyWeekdaySums[timeKey]) {
+                                    historyWeekdaySums[timeKey] = 0;
+                                    historyWeekdayCounts[timeKey] = 0;
+                                }
+                                historyWeekdaySums[timeKey] += cleanPeople;
+                                historyWeekdayCounts[timeKey] += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const sortedKeys = Object.keys(todayHalfHourMap).sort();
+        const todayLabels = sortedKeys;
+        const todayData = sortedKeys.map(key => Math.round(todayHalfHourMap[key].sum / todayHalfHourMap[key].count));
+
+        if (latestPeople !== '--') {
+            const currentPeopleElem = document.getElementById('currentPeople');
+            const percentElement = document.getElementById('currentPercent');
+            const anomalyElem = document.getElementById('anomalyBadge');
+            
+            const nowHour = now.getHours();
+            const isClosed = (nowHour >= 22 || nowHour < 6);
+
+            let todayOffset = dailyBaselineOffset[todayDateString] || 0;
+            let displayPeople = Math.max(0, Math.min(CAPACITY, latestPeople - todayOffset));
+
+            if (isClosed) {
+                currentPeopleElem.innerText = '0';
+                percentElement.innerText = '(已打烊)';
+                currentPeopleElem.className = 'text-level-green';
+                updateBannerImage('banner.jpg');
+                
+                if (latestPeople > 0) {
+                    anomalyElem.innerText = `🌙 離線保護啟動：官方閘門殘留 ${latestPeople} 人未歸零`;
+                    anomalyElem.style.display = 'inline-block';
+                } else {
+                    anomalyElem.style.display = 'none';
+                }
+            } else {
+                currentPeopleElem.innerText = displayPeople;
+                currentPeopleElem.classList.remove('text-level-green', 'text-level-yellow', 'text-level-red');
+                const currentStatus = getCrowdednessStatus(displayPeople);
+                currentPeopleElem.classList.add(currentStatus.textClass);
+
+                updateBannerImage(currentStatus.banner);
+
+                let percent = Math.round((displayPeople / CAPACITY) * 100);
+                percentElement.innerText = `(${percent}%)`;
+                
+                if (percent >= 100) {
+                    currentPeopleElem.classList.add('text-danger');
+                    percentElement.classList.add('text-danger');
+                } else {
+                    currentPeopleElem.classList.remove('text-danger');
+                    percentElement.classList.remove('text-danger');
+                }
+
+                if (todayOffset > 0) {
+                    anomalyElem.innerText = `⚠️ 官方晨間閘門未歸零 (+${todayOffset}人)，已自動校正還原真實人數`;
+                    anomalyElem.style.display = 'inline-block';
+                } else if (latestPeople > CAPACITY) {
+                    anomalyElem.innerText = `⚠️ 官方即時人數 (${latestPeople}人) 已超過上限 70 人，已自動封頂校正`;
+                    anomalyElem.style.display = 'inline-block';
+                } else {
+                    anomalyElem.style.display = 'none';
+                }
+
+                calculatePrediction(latestRecordTime, displayPeople, {
+                    weekdaySums: historyWeekdaySums, weekdayCounts: historyWeekdayCounts,
+                    weekendSums: historyWeekendSums, weekendCounts: historyWeekendCounts
+                });
+            }
+        }
+
+        const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+        const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+        const dayAvgs = dayOrder.map(d => dayCounts[d] > 0 ? Math.round(daySums[d] / dayCounts[d]) : 0);
+        
+        const dayP95sOrdered = dayOrder.map(d => {
+            const arr = daySamples[d];
+            if (!arr || arr.length === 0) return 0;
+            arr.sort((a, b) => a - b);
+            const idx = Math.floor(arr.length * 0.95);
+            return arr[Math.min(idx, arr.length - 1)];
+        });
+
+        const hourLabels = [];
+        const hourAvgs = [];
+        for (let i = 6; i <= 22; i++) {
+            hourLabels.push(i.toString().padStart(2, '0') + ':00');
+            hourAvgs.push(hourCounts[i] > 0 ? Math.round(hourSums[i] / hourCounts[i]) : 0);
+        }
+
+        return { todayLabels, todayData, dayLabels, dayAvgs, dayP95sOrdered, hourLabels, hourAvgs };
+    }
+
+    function calculatePrediction(nowTime, currentPeople, historyData) {
+        if (!nowTime) return;
+
+        const monthDayStr = String(nowTime.getMonth() + 1).padStart(2, '0') + '-' + String(nowTime.getDate()).padStart(2, '0');
+        const isHoliday = TAIWAN_HOLIDAYS.includes(monthDayStr);
+        const isTodayWeekend = (nowTime.getDay() === 0 || nowTime.getDay() === 6) || isHoliday;
+
+        const activeSums = isTodayWeekend ? historyData.weekendSums : historyData.weekdaySums;
+        const activeCounts = isTodayWeekend ? historyData.weekendCounts : historyData.weekdayCounts;
+
+        const currentKey = getHalfHourKey(nowTime);
+        const currentHistAvg = (activeCounts[currentKey] && activeCounts[currentKey] > 0)
+            ? (activeSums[currentKey] / activeCounts[currentKey])
+            : currentPeople;
+
+        const factorText = isHoliday ? "⚡ 國定假日模式" : "";
+
+        const time30 = new Date(nowTime.getTime() + 30 * 60000);
+        const pred30People = getSmoothedPred(time30, activeSums, activeCounts, currentHistAvg, currentPeople);
+
+        const time60 = new Date(nowTime.getTime() + 60 * 60000);
+        const pred60People = getSmoothedPred(time60, activeSums, activeCounts, currentHistAvg, pred30People);
+
+        renderPredUI(time30, 'pred30Card', 'pred30Time', 'pred30Count', 'pred30Level', 'pred30Factor', pred30People, factorText);
+        renderPredUI(time60, 'pred60Card', 'pred60Time', 'pred60Count', 'pred60Level', 'pred60Factor', pred60People, factorText);
+    }
+
+    function getSmoothedPred(targetTime, activeSums, activeCounts, baseHistAvg, basePeople) {
+        const hour = targetTime.getHours();
+        if (hour < 6 || hour > 22) return -1;
+
+        const key = getHalfHourKey(targetTime);
+        const futureHistAvg = (activeCounts[key] && activeCounts[key] > 0)
+            ? (activeSums[key] / activeCounts[key])
+            : basePeople;
+
+        const trendDelta = futureHistAvg - baseHistAvg;
+        let pred = Math.round(basePeople + (trendDelta * 0.4));
+        return Math.max(0, Math.min(CAPACITY, pred));
+    }
+
+    function renderPredUI(futureTime, cardElemId, timeElemId, countElemId, levelElemId, factorElemId, predPeople, factorText) {
+        const hour = futureTime.getHours();
+        const timeFormatted = `${String(hour).padStart(2, '0')}:${String(futureTime.getMinutes()).padStart(2, '0')}`;
+
+        document.getElementById(timeElemId).innerText = timeFormatted;
+        const cardElem = document.getElementById(cardElemId);
+        const countElem = document.getElementById(countElemId);
+        const levelElem = document.getElementById(levelElemId);
+
+        if (predPeople === -1) {
+            countElem.innerText = '已打烊';
+            levelElem.innerText = '';
+            cardElem.className = 'prediction-item card-default';
+            document.getElementById(factorElemId).innerText = '';
+            return;
+        }
+
+        const statusInfo = getCrowdednessStatus(predPeople);
+
+        countElem.innerText = `約 ${predPeople} 人`;
+        levelElem.innerText = statusInfo.text;
+        cardElem.className = `prediction-item ${statusInfo.cardClass}`;
+        document.getElementById(factorElemId).innerText = factorText;
+    }
+
+    // 💡 直式正立中文字標題插件 (由上而下正立書寫：平、均、人、數)
+    const verticalYAxisTitlePlugin = {
+        id: 'verticalYAxisTitlePlugin',
+        afterDraw(chart) {
+            const ctx = chart.ctx;
+            const yScale = chart.scales.y;
+            const y1Scale = chart.scales.y1;
+            const chars = ['平', '均', '人', '數'];
+            const fontSize = getDynamicFontSize(15);
+            const lineHeight = fontSize * 1.35;
+            const totalHeight = chars.length * lineHeight;
+
+            ctx.save();
+            ctx.font = `bold ${fontSize}px 'Rajdhani', 'Noto Sans TC', sans-serif`;
+            ctx.fillStyle = '#00f0ff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 左側 Y 軸直式標題
+            if (yScale) {
+                const centerY = (yScale.top + yScale.bottom) / 2;
+                const startY = centerY - (totalHeight / 2) + (lineHeight / 2);
+                const xPos = yScale.left - (fontSize * 1.05); // 精確定位在刻度數字外側
+                chars.forEach((c, idx) => {
+                    ctx.fillText(c, xPos, startY + (idx * lineHeight));
+                });
+            }
+
+            // 右側 Y1 軸直式標題
+            if (y1Scale) {
+                const centerY = (y1Scale.top + y1Scale.bottom) / 2;
+                const startY = centerY - (totalHeight / 2) + (lineHeight / 2);
+                const xPos = y1Scale.right + (fontSize * 1.05);
+                chars.forEach((c, idx) => {
+                    ctx.fillText(c, xPos, startY + (idx * lineHeight));
+                });
+            }
+
+            ctx.restore();
+        }
+    };
+
+    async function renderCharts() {
+        const data = await fetchAndProcessData();
+        const tickFontSize = getDynamicFontSize(14);
+        const titleFontSize = getDynamicFontSize(16);
+        const labelFontSize = getDynamicFontSize(13);
+
+        let maxLabel = null, maxVal = -1;
+        let minLabel = null, minVal = Infinity;
+
+        if (data.todayData.length > 0) {
+            data.todayData.forEach((val, idx) => {
+                if (val > maxVal) { maxVal = val; maxLabel = data.todayLabels[idx]; }
+                if (val < minVal) { minVal = val; minLabel = data.todayLabels[idx]; }
+            });
+        }
+
+        let annotationsConfig = {
+            comfortZone: {
+                type: 'box', yMin: 0, yMax: 25,
+                backgroundColor: 'rgba(0, 255, 102, 0.06)', borderWidth: 0,
+                label: { display: true, content: '綠色：舒適 (0-25人)', position: { x: 'start', y: 'center' }, font: { family: "'Rajdhani', sans-serif", size: labelFontSize, weight: 'bold' }, color: 'rgba(0, 255, 102, 0.85)' }
+            },
+            moderateZone: {
+                type: 'box', yMin: 25, yMax: 50,
+                backgroundColor: 'rgba(255, 230, 0, 0.05)', borderWidth: 0,
+                label: { display: true, content: '黃色：適中 (25-50人)', position: { x: 'start', y: 'center' }, font: { family: "'Rajdhani', sans-serif", size: labelFontSize, weight: 'bold' }, color: 'rgba(255, 230, 0, 0.85)' }
+            },
+            crowdedZone: {
+                type: 'box', yMin: 50, yMax: CAPACITY,
+                backgroundColor: 'rgba(255, 0, 127, 0.08)', borderWidth: 0,
+                label: { display: true, content: '紅色：擁擠 (50-70人)', position: { x: 'start', y: 'center' }, font: { family: "'Rajdhani', sans-serif", size: labelFontSize, weight: 'bold' }, color: 'rgba(255, 0, 127, 0.9)' }
+            }
+        };
+
+        if (maxLabel !== null) {
+            annotationsConfig.maxPoint = {
+                type: 'point', xValue: maxLabel, yValue: maxVal,
+                backgroundColor: '#ff007f', radius: 7, borderColor: '#ffffff', borderWidth: 1.5
+            };
+            annotationsConfig.maxLabel = {
+                type: 'label', xValue: maxLabel, yValue: maxVal,
+                yAdjust: -18,
+                backgroundColor: 'rgba(255, 0, 127, 0.9)',
+                content: `最高: ${maxVal}人`,
+                color: '#fff', font: { family: "'Orbitron', sans-serif", size: labelFontSize + 1, weight: 'bold' },
+                padding: 6, borderRadius: 4
+            };
+        }
+
+        if (minLabel !== null && minLabel !== maxLabel) {
+            annotationsConfig.minPoint = {
+                type: 'point', xValue: minLabel, yValue: minVal,
+                backgroundColor: '#00ff66', radius: 7, borderColor: '#ffffff', borderWidth: 1.5
+            };
+            annotationsConfig.minLabel = {
+                type: 'label', xValue: minLabel, yValue: minVal,
+                yAdjust: 16,
+                backgroundColor: 'rgba(0, 255, 102, 0.9)',
+                content: `最低: ${minVal}人`,
+                color: '#000', font: { family: "'Orbitron', sans-serif", size: labelFontSize + 1, weight: 'bold' },
+                padding: 6, borderRadius: 4
+            };
+        }
+
+        if (todayChartInstance) todayChartInstance.destroy();
+        const ctxToday = document.getElementById('todayChart').getContext('2d');
+        todayChartInstance = new Chart(ctxToday, {
+            type: 'line',
+            data: {
+                labels: data.todayLabels,
+                datasets: [{
+                    label: '今日每半小時平均人數',
+                    data: data.todayData,
+                    borderColor: '#00f0ff',
+                    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+                    borderWidth: 3.5,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#00f0ff',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 1.5,
+                    fill: false,
+                    tension: 0.35,
+                    yAxisID: 'y'
+                }]
+            },
+            plugins: [verticalYAxisTitlePlugin], // 掛載直式書寫標題插件
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { 
+                    padding: { 
+                        left: getDynamicFontSize(24), 
+                        right: getDynamicFontSize(24) 
+                    } 
+                },
+                animation: { duration: 0 },
+                plugins: {
+                    legend: {
+                        labels: { color: '#00f0ff', font: { size: titleFontSize, weight: 'bold' } }
+                    },
+                    tooltip: tooltipFontConfig,
+                    annotation: { annotations: annotationsConfig }
+                },
+                scales: { 
+                    x: { 
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        maxRotation: 45, minRotation: 45 
+                    },
+                    y: { 
+                        position: 'left',
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                        beginAtZero: true, 
+                        max: CAPACITY,
+                        title: { display: false } // 停用預設躺平旋轉標題，改由插件渲染直式文字
+                    },
+                    y1: {
+                        position: 'right',
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } },
+                        beginAtZero: true,
+                        max: CAPACITY,
+                        grid: { drawOnChartArea: false },
+                        title: { display: false }
+                    }
+                }
+            }
+        });
+
+        const wrapper = document.getElementById('todayChartWrapper');
+        wrapper.scrollLeft = 0;
+
+        let hasScrolled = false;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !hasScrolled) {
+                    hasScrolled = true;
+                    setTimeout(() => {
+                        const targetLeft = wrapper.scrollWidth - wrapper.clientWidth;
+                        // 改慢為現速度的 30%：滾動時長 6000ms
+                        smoothScrollTo(wrapper, targetLeft, 6000);
+                    }, 400);
+                }
+            });
+        }, { threshold: 0.35 });
+
+        observer.observe(wrapper);
+
+        if (dayChartInstance) dayChartInstance.destroy();
+        const ctxDay = document.getElementById('dayChart').getContext('2d');
+        dayChartInstance = new Chart(ctxDay, {
+            type: 'bar', 
+            data: {
+                labels: data.dayLabels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: '平均人數',
+                        data: data.dayAvgs,
+                        backgroundColor: getBarColors(data.dayAvgs),
+                        borderRadius: 4,
+                        order: 2
+                    },
+                    {
+                        type: 'line',
+                        label: '尖峰人潮 (P95)',
+                        data: data.dayP95sOrdered,
+                        borderColor: '#ff007f',
+                        backgroundColor: '#ff007f',
+                        borderWidth: 2.5,
+                        pointRadius: 6,
+                        pointStyle: 'rectRot',
+                        fill: false,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 12 } },
+                animation: { duration: 0 },
+                plugins: { 
+                    legend: { 
+                        display: true, 
+                        position: 'top',
+                        labels: { color: '#e2e8f0', font: { size: titleFontSize, weight: 'bold' } }
+                    },
+                    tooltip: tooltipFontConfig
+                }, 
+                scales: { 
+                    x: { 
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    y: { 
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                        beginAtZero: true, 
+                        max: CAPACITY, 
+                        title: { display: true, text: '人數', color: '#00f0ff', font: { size: titleFontSize, weight: 'bold' } } 
+                    } 
+                }
+            }
+        });
+
+        if (hourChartInstance) hourChartInstance.destroy();
+        const ctxHour = document.getElementById('hourChart').getContext('2d');
+        hourChartInstance = new Chart(ctxHour, {
+            type: 'bar',
+            data: {
+                labels: data.hourLabels,
+                datasets: [{
+                    label: '平均人數',
+                    data: data.hourAvgs,
+                    backgroundColor: getBarColors(data.hourAvgs),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 12 } },
+                animation: { duration: 0 },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: tooltipFontConfig
+                },
+                scales: { 
+                    x: { 
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        maxRotation: 45, minRotation: 45 
+                    },
+                    y: { 
+                        ticks: { color: '#94a3b8', font: { size: tickFontSize, weight: 'bold' } }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                        beginAtZero: true, 
+                        title: { display: true, text: '平均人數', color: '#00f0ff', font: { size: titleFontSize, weight: 'bold' } } 
+                    } 
+                }
+            }
+        });
+
+        console.log(`圖表已於 ${new Date().toLocaleTimeString()} 重新計算並更新`);
+    }
+
+    window.addEventListener('resize', () => {
+        if (todayChartInstance) renderCharts();
+    });
+
+    renderCharts();
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+                .catch(err => console.log('Service Worker 註冊失敗:', err));
+        });
+    }
+</script>
+
+</body>
+</html>
